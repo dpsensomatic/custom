@@ -1,0 +1,20 @@
+<!-- data/importance_levels.xml -->
+<odoo>
+    <data noupdate="1">
+        <record id="importance_minima" model="importance.level">
+            <field name="name">Mínima</field>
+        </record>
+        <record id="importance_media" model="importance.level">
+            <field name="name">Media</field>
+        </record>
+        <record id="importance_alta" model="importance.level">
+            <field name="name">Alta</field>
+        </record>
+        <record id="importance_potencial" model="importance.level">
+            <field name="name">Potencial</field>
+        </record>
+        <record id="importance_critica" model="importance.level">
+            <field name="name">Crítica</field>
+        </record>
+    </data>
+</odoo>

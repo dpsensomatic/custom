@@ -1,0 +1,31 @@
+<odoo>
+    <record id="view_move_form_inherit_misc_taxes" model="ir.ui.view">
+        <field name="name">account.move.form.misc.taxes</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form" />
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='invoice_line_ids']" position="after">
+                <div class="oe_subtotal_footer separator">
+                    <label for="x_misc_tax_total" />
+                    <field name="x_misc_tax_total" nolabel="1" widget="monetary" />
+                </div>
+            </xpath>
+            <xpath expr="//field[@name='quantity']" position="before">
+                <field name='account_id'/>
+            </xpath>
+            <xpath expr='//page[@name="invoice_tab"]' position='after'>
+                <page id="entries_tab" string="Apuntes Contables">
+                    <field name="line_ids" nolabel="1" context="{'default_move_id': id}" 
+                           domain="[('move_id', '=', id)]">
+                        <list string="Apuntes Contables" editable="bottom" no_open="1" default_order="sequence, id">
+                            <field name="account_id" readonly="1"/>
+                            <field name="name" string="Label" readonly="1"/>
+                            <field name="debit" sum="Total Débito" readonly="1"/>
+                            <field name="credit" sum="Total Crédito" readonly="1"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

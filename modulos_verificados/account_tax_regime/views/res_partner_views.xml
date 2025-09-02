@@ -1,0 +1,25 @@
+<odoo>
+  <record id="view_partner_form_inherit_tax_regime" model="ir.ui.view">
+    <field name="name">res.partner.form.tax.regime</field>
+    <field name="model">res.partner</field>
+    <field name="inherit_id" ref="base.view_partner_form" />
+    <field name="arch" type="xml">
+      <xpath expr="//sheet/notebook/page[@name='sales_purchases']" position="inside">
+        <group string="Fiscal">
+          <field name="x_tax_regime_id" />
+        </group>
+      </xpath>
+      <xpath expr="//field[@name='autopost_bills']/ancestor::group[1]" position='after'>
+        <group name='accounting_accounts' string='Cuentas asociadas'>
+          <field name='property_account_receivable_id' />
+          <field name='property_account_payable_id' />
+          <field name='apply_rteica_withholding' />
+          <field name='apply_rteiva_withholding' />
+          <field name='apply_rtefte_withholding' />
+          <field name="withholding_tax_ids" widget="many2many_tags"
+            placeholder="Selecciona impuestos de retención" />
+        </group>
+      </xpath>
+    </field>
+  </record>
+</odoo>

@@ -1,0 +1,12 @@
+<odoo>
+    <record id="x_account_move_line_list" model="ir.ui.view">
+        <field name="name">x_account_move_line_list.account.move.line.list</field>
+        <field name="model">account.move.line</field>
+        <field name="inherit_id" ref="account.view_move_line_tree" />
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='move_name']" position="after">
+                <field name="account_id" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

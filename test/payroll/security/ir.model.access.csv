@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_hr_payroll,hr.payroll,model_hr_payroll,base.group_user,1,1,1,1
+access_hr_payroll_line,hr.payroll_line,model_hr_payroll_line,base.group_user,1,1,1,1
+access_hr_payroll_events,hr.payroll_events,model_hr_payroll_events,base.group_user,1,1,1,1
+

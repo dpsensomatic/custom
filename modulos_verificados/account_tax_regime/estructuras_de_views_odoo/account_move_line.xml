@@ -1,0 +1,37 @@
+<list name="move_line_tree" string="Journal Items" create="false" edit="true" expand="context.get('expand', False)" multi_edit="1" sample="1">
+                    <field name="move_id" column_invisible="True" on_change="1"/>
+                    <field name="invoice_date" string="Invoice Date" optional="hide"/>
+                    <field name="date" readonly="1"/>
+                    <field name="company_id" column_invisible="True" on_change="1"/>
+                    <field name="journal_id" readonly="1" options="{&quot;no_open&quot;:True}" optional="hide"/>
+                    <field name="move_name" string="Journal Entry" widget="open_move_widget"/>
+                    <field name="partner_id" optional="show" readonly="move_type != 'entry'" on_change="1" can_create="True" can_write="True"/>
+                    <field name="ref" optional="hide" readonly="False"/>
+                    <field name="product_id" readonly="1" optional="hide" on_change="1"/>
+                    <field name="name" optional="show"/>
+                    <field name="tax_ids" widget="many2many_tags" optional="hide" readonly="1"/>
+                    <field name="amount_currency" string="In Currency" optional="hide" readonly="1" invisible="is_same_currency" on_change="1"/>
+                    <field name="currency_id" optional="hide" string="Currency" readonly="1" invisible="is_same_currency" on_change="1"/>
+                    <field name="debit" sum="Total Debit" readonly="1" on_change="1"/>
+                    <field name="credit" sum="Total Credit" readonly="1" on_change="1"/>
+                    <field name="tax_tag_ids" string="Tax Grids" options="{'no_create': True, 'no_create_edit': True}" domain="[('applicability', '=', 'taxes')]" widget="many2many_tags" optional="hide" can_create="False" can_write="False"/>
+                    <field name="discount_date" string="Discount Date" optional="hide"/>
+                    <field name="discount_amount_currency" string="Discount Amount" optional="hide"/>
+                    <field name="tax_line_id" string="Originator Tax" optional="hide" readonly="1"/>
+                    <field name="date_maturity" readonly="1" optional="hide"/>
+                    <field name="balance" sum="Total Balance" optional="hide" readonly="1" on_change="1"/>
+                    <field name="matching_number" string="Matching" readonly="1" optional="show"/>
+                    <field name="amount_residual" sum="Total Residual" string="Residual" optional="hide" readonly="1" invisible="not is_account_reconcile"/>
+                    <field name="amount_residual_currency" sum="Total Residual in Currency" string="Residual in Currency" optional="hide" readonly="1" invisible="is_same_currency or not is_account_reconcile"/>
+                    <field name="move_type" column_invisible="True"/>
+                    <field name="parent_state" column_invisible="True"/>
+                    <field name="account_type" column_invisible="True"/>
+                    <field name="statement_line_id" column_invisible="True"/>
+                    <field name="company_currency_id" column_invisible="True" on_change="1"/>
+                    <field name="is_same_currency" column_invisible="True"/>
+                    <field name="is_account_reconcile" column_invisible="True"/>
+                    <field name="sequence" column_invisible="True"/>
+                    <groupby name="partner_id">
+                        <button name="edit" type="edit" icon="fa-edit" title="Edit"/>
+                    </groupby>
+</list>

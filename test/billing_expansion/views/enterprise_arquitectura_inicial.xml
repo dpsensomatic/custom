@@ -1,0 +1,230 @@
+<form string="Diario de cuenta">
+    <field name="company_id" invisible="1" on_change="1" />
+    <field name="bank_statements_source" invisible="1" />
+    <sheet>
+        <div name="button_box" class="oe_button_box">
+            <button class="oe_stat_button" type="action" name="240" icon="fa-book"
+                context="{'search_default_journal_id':id}">
+                <div class="o_stat_info">
+                    <span class="o_stat_text">Asientos contables</span>
+                </div>
+            </button>
+        </div>
+        <widget name="web_ribbon" title="Archivado" bg_color="text-bg-danger" invisible="active" />
+        <div class="oe_title">
+            <label for="name" />
+            <field name="name_placeholder" invisible="1" force_save="1" />
+            <h1>
+                <field name="name" options="{'placeholder_field': 'name_placeholder'}"
+                    required="not type" />
+            </h1>
+        </div>
+        <group>
+            <group>
+                <field name="active" invisible="1" />
+                <field name="type" on_change="1" />
+                <field name="code" placeholder="p. ej. INV" />
+            </group>
+            <group>
+                <field name="country_code" invisible="1" />
+            </group>
+        </group>
+        <notebook>
+            <page name="bank_account" string="Asientos contables">
+                <group>
+                    <group>
+                        <field name="default_account_type" invisible="1" />
+                        <label for="default_account_id" string="Cuenta bancaria"
+                            invisible="type != 'bank'" />
+                        <label for="default_account_id" string="Cuenta del diario"
+                            invisible="type != 'credit'" />
+                        <label for="default_account_id" string="Cuenta de efectivo"
+                            invisible="type != 'cash'" />
+                        <label for="default_account_id" string="Cuenta de ingresos por defecto"
+                            invisible="type != 'sale'" />
+                        <label for="default_account_id" string="Cuenta de gastos por defecto"
+                            invisible="type != 'purchase'" />
+                        <label for="default_account_id" string="Cuenta por defecto"
+                            help="Si se establece, esta cuenta se utiliza para la compensación automática de asientos."
+                            invisible="type != 'general'" />
+                        <field name="default_account_id" nolabel="1"
+                            placeholder="Crear cuenta nueva"
+                            invisible="not type or type in ('sale', 'purchase', 'general')"
+                            required="(id and type in ('bank', 'cash', 'credit'))"
+                            options="{'no_quick_create': True}" on_change="1" can_create="True"
+                            can_write="True" />
+                        <field name="default_account_id" nolabel="1"
+                            invisible="type not in ('sale', 'purchase', 'general')"
+                            required="type in ('sale', 'purchase')"
+                            options="{'no_quick_create': True}" on_change="1" can_create="True"
+                            can_write="True" />
+                        <field name="suspense_account_id"
+                            invisible="type not in ('bank', 'cash', 'credit')"
+                            required="type in ('bank', 'cash', 'credit')"
+                            options="{'no_quick_create': True}" can_create="True" can_write="True" />
+                        <field name="non_deductible_account_id" invisible="type != 'purchase'"
+                            options="{'no_quick_create': True}" can_create="True" can_write="True" />
+                        <field name="profit_account_id" invisible="type not in ('cash', 'bank')"
+                            can_create="True" can_write="True" />
+                        <field name="loss_account_id" invisible="type not in ('cash', 'bank')"
+                            can_create="True" can_write="True" />
+                        <field name="refund_sequence" invisible="type not in ['sale', 'purchase']" />
+                        <field name="debit_sequence" invisible="type not in ('sale', 'purchase')" />
+                        <field name="l10n_co_edi_debit_note"
+                            invisible="country_code != 'CO' or type not in ('sale', 'purchase')" />
+                        <field name="payment_sequence"
+                            invisible="type not in ('bank', 'cash', 'credit')" />
+                        <field name="invoice_template_pdf_report_id"
+                            invisible="not display_invoice_template_pdf_report_id"
+                            options="{'no_create': True, 'no_edit': True}" can_create="True"
+                            can_write="True" />
+                    </group>
+                    <group name="bank_account_number" invisible="type != 'bank'">
+                        <field name="company_partner_id" invisible="1" />
+                        <field name="bank_account_id" string="Número de cuenta bancaria"
+                            context="{'default_partner_id': company_partner_id}" on_change="1"
+                            can_create="True" can_write="True" />
+                        <field name="bank_id" invisible="not bank_account_id" can_create="True"
+                            can_write="True" />
+                        <field name="bank_statements_source" widget="radio"
+                            required="type == 'bank'" />
+                        <field name="account_online_account_id" invisible="1" can_create="True"
+                            can_write="True" />
+                        <field name="renewal_contact_email"
+                            invisible="not account_online_account_id" />
+                        <!-- Take one cell in order to have the button aligned with the field and
+                        not its label -->
+                        <div class="o_cell flex-grow-1 flex-sm-grow-0"
+                            invisible="not account_online_account_id" />
+                        <button name="action_send_reminder" class="oe_link oe_inline ps-0 py-0"
+                            type="object" invisible="not account_online_account_id">
+                            <i class="oi oi-arrow-right me-2" /> Enviar ahora </button>
+                    </group>
+                    <group name="bank_source" invisible="type != 'credit'">
+                        <label for="bank_statements_source"
+                            string="Canales de comunicación de transacciones"
+                            invisible="type != 'credit'" />
+                        <field name="bank_statements_source" nolabel="1" widget="radio"
+                            required="type == 'credit'" />
+                    </group>
+                </group>
+            </page>
+            <page id="inbound_payment_settings" string="Pagos entrantes"
+                name="page_incoming_payments" invisible="type not in ['cash', 'bank', 'credit']">
+                <field name="available_payment_method_ids" invisible="1" on_change="1" />
+                <field name="inbound_payment_method_line_ids" nolabel="1"
+                    context="{'default_payment_type': 'inbound'}" on_change="1">
+                    <list string="Métodos de pago" editable="bottom"
+                        decoration-muted="payment_provider_state == 'disabled'">
+                        <field name="available_payment_method_ids" column_invisible="True" />
+                        <field name="payment_type" column_invisible="True" />
+                        <field name="company_id" column_invisible="True" />
+                        <field name="sequence" widget="handle" />
+                        <field name="payment_method_id"
+                            options="{'no_create': True, 'no_open': True}" on_change="1"
+                            can_create="False" can_write="True" />
+                        <field name="name" />
+                        <field name="payment_account_id"
+                            placeholder="Sin asientos contables de pago"
+                            string="Cuentas de recibos pendientes"
+                            options="{'no_quick_create': True}" can_create="True" can_write="True" />
+                        <field name="code" column_invisible="True" />
+                        <field name="payment_provider_id"
+                            options="{'no_open': True, 'no_create': True}" optional="hide"
+                            on_change="1" can_create="True" can_write="True" />
+                        <field name="payment_provider_state" column_invisible="True" />
+                        <button name="action_open_provider_form" type="object" string="CONFIGURAR"
+                            class="float-end btn-secondary" invisible="not payment_provider_id" />
+                        <field name="default_account_id" column_invisible="True" readonly="True"
+                            data-used-by="domain=&quot;(company_id and [('company_ids', 'parent_of', [company_id])] or [('company_ids', 'parent_of', '')]) + (['|', ('account_type', 'in', ('asset_current', 'liability_current')), ('id', '=', default_account_id)])&quot; (field,payment_account_id)" />
+                    </list>
+                </field>
+            </page>
+            <page id="outbound_payment_settings" string="Pagos salientes"
+                name="page_outgoing_payments" invisible="type not in ['cash', 'bank', 'credit']">
+                <field name="outbound_payment_method_line_ids" nolabel="1"
+                    context="{'default_payment_type': 'outbound'}" on_change="1">
+                    <list string="Métodos de pago" editable="bottom">
+                        <field name="available_payment_method_ids" column_invisible="True" />
+                        <field name="payment_type" column_invisible="True" />
+                        <field name="company_id" column_invisible="True" />
+                        <field name="sequence" widget="handle" />
+                        <field name="payment_method_id"
+                            options="{'no_create': True, 'no_open': True}" on_change="1"
+                            can_create="False" can_write="True" />
+                        <field name="name" />
+                        <field name="payment_account_id"
+                            placeholder="Sin asientos contables de pago"
+                            string="Cuentas de pagos pendientes" options="{'no_quick_create': True}"
+                            can_create="True" can_write="True" />
+                        <field name="default_account_id" column_invisible="True" readonly="True"
+                            data-used-by="domain=&quot;(company_id and [('company_ids', 'parent_of', [company_id])] or [('company_ids', 'parent_of', '')]) + (['|', ('account_type', 'in', ('asset_current', 'liability_current')), ('id', '=', default_account_id)])&quot; (field,payment_account_id)" />
+                    </list>
+                </field>
+                <field name="selected_payment_method_codes" invisible="1" />
+                <group name="outgoing_payment" />
+            </page>
+            <page name="advanced_settings" string="Ajustes avanzados">
+                <group>
+                    <group string="Automatización">
+                        <field name="restrict_mode_hash_table"
+                            invisible="type not in ['sale', 'purchase', 'general']" />
+                    </group>
+                    <group string="Correos electrónicos" name="group_email_alias"
+                        invisible="type not in ('general', 'sale', 'purchase')">
+                        <field name="display_alias_fields" invisible="1" />
+                        <div class="o_row" colspan="2" invisible="display_alias_fields">
+                            <a type="action" name="218" class="btn btn-link" role="button">
+                                <i class="oi oi-fw o_button_icon oi-arrow-right" /> Configurar
+                                dominio de alias </a>
+                        </div>
+                        <div class="o_row" colspan="2" dir="ltr"
+                            invisible="not display_alias_fields">
+                            <label string="Alias de correo electrónico" for="alias_name" />
+                                            <field
+                                name="alias_name" placeholder="alias" />@ <field
+                                name="alias_domain_id" placeholder="p. ej. micompañía.com"
+                                options="{'no_create': True, 'no_open': True}" can_create="True"
+                                can_write="True" />
+                        </div>
+                        <field name="incoming_einvoice_notification_email"
+                            invisible="type != 'purchase'"
+                            placeholder="Ingrese un correo electrónico para recibir notificaciones" />
+                    </group>
+                    <!-- edi -->
+                    <group name="group_edi_config" string="Intercambio electrónico de datos (EDI)"
+                        invisible="not compatible_edi_ids">
+                        <field name="compatible_edi_ids" invisible="1" />
+                        <field name="edi_format_ids" widget="many2many_checkboxes"
+                            invisible="not compatible_edi_ids" can_create="True" can_write="True" />
+                    </group>
+                    <group string="Comunicaciones de pago" invisible="type != 'sale'">
+                        <field name="invoice_reference_type" />
+                        <field name="invoice_reference_model"
+                            invisible="invoice_reference_type == 'none'" />
+                    </group>
+                    <group string="Resolución DIAN"
+                        invisible="country_code != 'CO' or type not in ('sale', 'purchase')">
+                        <button name="button_l10n_co_dian_fetch_numbering_range" colspan="2"
+                            icon="fa-refresh" class="btn btn-secondary" type="object"
+                            string="Reload DIAN configuration"
+                            help="Using the company VAT and software code, fetch the resolution number, resolution                         date, sequence prefix, sequence numbers and technical control key" />
+                        <field name="l10n_co_edi_dian_authorization_number" />
+                        <field name="l10n_co_edi_dian_authorization_date" />
+                        <field name="l10n_co_edi_dian_authorization_end_date" />
+                        <field name="l10n_co_edi_min_range_number" />
+                        <field name="l10n_co_edi_max_range_number" />
+                        <field name="l10n_co_dian_provider" invisible="1" />
+                        <field name="l10n_co_dian_technical_key"
+                            invisible="l10n_co_dian_provider == 'carvajal'" />
+                    </group>
+                </group>
+            </page>
+        </notebook>
+    </sheet>
+    <chatter />
+    <field name="available_invoice_template_pdf_report_ids" invisible="True" readonly="True"
+        data-used-by="domain=&quot;[('id', 'in', available_invoice_template_pdf_report_ids)]&quot; (field,invoice_template_pdf_report_id)" />
+    <field name="display_invoice_template_pdf_report_id" invisible="True" readonly="True"
+        data-used-by="invisible='not display_invoice_template_pdf_report_id' (field,invoice_template_pdf_report_id)" />
+</form>

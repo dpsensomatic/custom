@@ -1,0 +1,96 @@
+<odoo>
+
+    <!-- Action -->
+    <record id="action_hr_payroll" model="ir.actions.act_window">
+        <field name="name">Devengado</field>
+        <field name="res_model">hr.payroll</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- Form -->
+    <record id="view_hr_payroll_form" model="ir.ui.view">
+        <field name="name">hr.payroll.form</field>
+        <field name="model">hr.payroll</field>
+        <field name="arch" type="xml">
+            <form string="Nómina">
+                <header>
+                    <button name="action_generate_lines" type="object" string="Generar Líneas" class="oe_highlight"/>
+                    <button name="action_generate_accounting_entries" type="object" string="Generar Asientos" class="btn-primary"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="date_start"/>
+                        <field name="date_end"/>
+                        <field name="state" readonly="1"/>
+                    </group>
+
+                    <notebook>
+                        <page string="Líneas de Nómina">
+                            <field name="line_ids">
+                                <list editable="bottom">
+                                    <field name="employee_id"/>
+                                    <field name="contract_id"/>
+                                    <field name="base_wage"/>
+                                    <field name="wage_earned"/>
+                                    <field name="days_worked"/>
+                                    <field name="sick_leave"/>
+                                    <field name="overtime_hours"/>
+                                    <field name="transportation_allowance"/>
+                                    <field name="night_surcharge"/>
+                                    <field name='other_earnings'/>
+                                    <field name="gross"/>
+                                    <field name="health_contribution"/>
+                                    <field name="pension_contribution"/>
+                                    <field name='other_deductions'/>
+                                    <field name="deductions"/>
+                                    <field name="net"/>
+                                </list>
+                                <form>
+                                    <group>
+                                    <field name="employee_id"/>
+                                    <field name="contract_id"/>
+                                    <field name="base_wage"/>
+                                    <field name="wage_earned"/>
+                                    <field name="days_worked"/>
+                                    <field name="sick_leave"/>
+                                    <field name="overtime_hours"/>
+                                    <field name="transportation_allowance"/>
+                                    <field name="night_surcharge"/>
+                                    <field name='other_earnings'/>
+                                    <field name="gross"/>
+                                    <field name="health_contribution"/>
+                                    <field name="pension_contribution"/>
+                                    <field name='other_deductions'/>
+                                    <field name="deductions"/>
+                                    <field name="net"/>
+                                    </group>
+                                </form>
+                            </field>
+                        </page>
+                        <page string="Totales">
+                            <group>
+                                <!-- Aqui ira informacion adicional importante -->
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- List -->
+    <record id="view_hr_payroll_list" model="ir.ui.view">
+        <field name="name">hr.payroll.list</field>
+        <field name="model">hr.payroll</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Menu Item -->
+    <menuitem name="Devengados" id="payroll.accruals" parent="payroll.payroll" action='action_hr_payroll'/>
+
+</odoo>

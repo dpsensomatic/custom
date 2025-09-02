@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Vista personalizada del formulario de clientes (res.partner) -->
+    <record id='clients_form_view_form' model='ir.ui.view'>
+
+        <!-- Nombre técnico único de la vista -->
+        <field name='name'>customers_form.res.partner.form</field>
+
+        <!-- Modelo al que se aplica esta vista -->
+        <field name='model'>res.partner</field>
+
+        <!-- Hereda de la vista base de formulario de partner -->
+        <field name='inherit_id' ref='base.view_partner_form' />
+
+        <!-- Estructura XML personalizada de la vista -->
+        <field name='arch' type='xml'>
+
+            <!-- Personalización del campo 'name' para clientes individuales -->
+            <xpath expr="//field[@name='name'][@id='individual']"
+                position="attributes">
+                <attribute name="placeholder">Nombre del cliente</attribute>
+                <attribute name="required">1</attribute>
+            </xpath>
+
+            <!-- Personalización del campo 'name' para empresas -->
+            <xpath
+                expr="//field[@name='name'][@id='company']" position="attributes">
+                <attribute name="placeholder">Nombre de la empresa</attribute>
+                <attribute name="required">1</attribute>
+            </xpath>
+
+            <!-- Reemplazo del segundo <group> ancestro del campo 'street' -->
+            <!-- Se usa ancestor::group[2] para subir dos niveles desde el field 'street' -->
+            <xpath expr="//field[@name='street']/ancestor::group[2]" position="replace">
+
+                <!-- Grupo de información general del cliente -->
+                <group
+                    string='Detalles del cliente'>
+                    <group>
+                        <!-- Teléfono con botón para quitar de lista negra SMS -->
+                        <label for="phone" class="oe_inline" />
+                        <div class="o_row o_row_readonly">
+                            <button name="phone_action_blacklist_remove"
+                                class="fa fa-ban text-danger"
+                                title="Este número de teléfono está en la lista de exclusión de Marketing por SMS. Haga clic para quitarlo de la lista de exclusión."
+                                type="object"
+                                context="{'default_phone': phone}"
+                                invisible="not phone_blacklisted" />
+                            <field name="phone" widget="phone" on_change="1" />
+                        </div>
+                        <field name="website" string="Sitio web" widget="url" />
+                        <field name='clasification' placeholder="Seleccione una clasificación" />
+                        <field name="classification_comments" string='Comentarios clasificación' />
+                        <field name="attended_by" />
+                        <field name="payment_method" />
+                        <field name="importance" placeholder="Seleccione un nivel de importancia" />
+                    </group>
+                    <group>
+                        <!-- Email con botón para quitar de lista negra correo -->
+                        <label for="email" class="oe_inline" />
+                        <div class="o_row o_row_readonly">
+                            <button name="mail_action_blacklist_remove"
+                                class="fa fa-ban text-danger"
+                                title="Este correo electrónico está en la lista negra para envíos masivos. Haga clic para eliminarlo de la lista negra."
+                                type="object" context="{'default_email': email}"
+                                invisible="not is_blacklisted" />
+                            <field name="email" widget="email" context="{'gravatar_image': True}"
+                                required="user_ids" on_change="1" />
+                        </div>
+                        <!-- Campo invisible auxiliar para mostrar placeholder en el NIT -->
+                        <field name="vat" placeholder="Por ejemplo, BE0477472701"
+                            options="{'placeholder_field': 'partner_vat_placeholder'}"
+                            widget="field_partner_autocomplete" string='Nit' on_change="1" />
+                        <field name="birth_date" placeholder='aaaa/mm/dd' />
+                        <field name="assigned_to" placeholder="Seleccione el empleado asignado"
+                            required='1' />
+                        <field name="customer_source" placeholder="Seleccione origen del cliente" />
+                        <field name="rdstation_id" placeholder='' />
+                    </group>
+                </group>
+
+                <!-- Grupo de información de dirección del cliente -->
+                <group
+                    string='Detalles de la dirección'>
+                    <group>
+                        <field name="full_address" placeholder="Dirección completa"
+                            class="custom_o_address_street" />
+                        <field name="street" invisible="1" />
+                        <field name="street2" invisible="1" />
+                        <field name="city" invisible="1" />
+                        <field name="state_id" invisible="1" />
+                        <field name="zip" invisible="1" />
+                        <field name="shipping_address" placeholder="Dirección de envío"
+                            class="o_address_country" />
+                        <field name="billing_email" placeholder="Correo facturación"
+                            class="custom_o_address_street" />
+                        <field name="tax_certificates" placeholder="Certificados tributarios"
+                            class="custom_o_address_street" />
+                    </group>
+                    <group>
+                        <field name="city" placeholder="Ciudad" class="o_address_city"
+                            readonly="type == 'contact' and parent_id" />
+                        <label for="country_id">País</label>
+                        <!-- Campo de país con opciones personalizadas y control de creación/edición -->
+                        <div name="partner_address_country" class="d-flex justify-content-between">
+                            <field name="country_id" placeholder="País" class="o_address_country"
+                                options="{&quot;no_open&quot;: True, &quot;no_create&quot;: True}"
+                                readonly="type == 'contact' and parent_id" on_change="1"
+                                can_create="True"
+                                can_write="True" />
+                        </div>
+                        <field name="billing_close" placeholder="Cierre facturación"
+                            class="custom_o_address_street" />
+                        <field name="certificate_details" placeholder="Detalles certificados"
+                            class="custom_o_address_street" />
+                    </group>
+                </group>
+            </xpath>
+
+        </field>
+    </record>
+</odoo>

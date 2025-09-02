@@ -1,0 +1,79 @@
+<form string="Fiscal Position">
+    <div class="alert alert-info" role="alert" invisible="not foreign_vat_header_mode">
+        <div invisible="foreign_vat_header_mode not in ('templates_found', 'no_template')"> Click <button
+                string="here" type="object" name="action_create_foreign_taxes" class="oe_link"
+                style="padding: 0; vertical-align: baseline;" /> to create the taxes for this
+            country. </div>
+    </div>
+
+    <sheet>
+        <div class="oe_button_box" name="button_box" />
+        <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active" />
+        <group>
+            <group>
+                <field name="active" invisible="1" />
+                <field name="company_id" invisible="1" on_change="1" />
+                <field name="states_count" invisible="1" />
+                <field name="company_country_id" invisible="1" on_change="1" />
+                <field name="fiscal_country_codes" invisible="1" />
+                <field name="foreign_vat_header_mode" invisible="1" />
+                <field name="name" />
+            </group>
+            <group>
+                <field name="auto_apply" />
+                <field name="vat_required" invisible="not auto_apply" />
+                <field name="foreign_vat" on_change="1" />
+                <field name="country_group_id" invisible="not auto_apply and not foreign_vat"
+                    required="foreign_vat and not country_id" on_change="1" can_create="True"
+                    can_write="True" />
+                <field name="country_id" required="foreign_vat and not country_group_id"
+                    options="{'no_open': True, 'no_create': True}" on_change="1" can_create="True"
+                    can_write="True" />
+                <field name="state_ids" widget="many2many_tags"
+                    domain="[('country_id', '=', country_id)]"
+                    invisible="(not auto_apply and not foreign_vat) or not country_id or states_count == 0"
+                    can_create="True" can_write="True" />
+                <label for="zip_from" string="Zip Range"
+                    invisible="not auto_apply or not country_id" />
+                <div invisible="not auto_apply or not country_id">
+                    <span> From </span>
+                    <field name="zip_from" class="oe_inline" />
+                    <div class="oe_edit_only" />
+                    <span> To </span>
+                    <field name="zip_to" class="oe_inline" />
+                </div>
+            </group>
+        </group>
+        <notebook>
+            <page name="tax_mapping" string="Tax Mapping">
+                <field name="tax_ids" widget="one2many" nolabel="1"
+                    context="{'append_type_to_tax_name': True}">
+                    <list name="tax_map_tree" string="Tax Mapping" editable="bottom" no_open="1"
+                        decoration-muted="tax_dest_id and not tax_dest_active">
+                        <field name="tax_dest_active" column_invisible="1" />
+                        <field name="tax_src_id"
+                            domain="[                                             ('type_tax_use', '!=', 'none'),                                             ('country_id', '=', parent.company_country_id),                                             '|', ('company_id', '=', False), ('company_id', 'parent_of', parent.company_id)                                         ]"
+                            context="{'append_type_to_tax_name': True}" can_create="True"
+                            can_write="True" />
+
+                        <field name="tax_dest_id"
+                            domain="[                                             ('type_tax_use', '!=', 'none'),                                             ('country_id', '=', parent.country_id if parent.foreign_vat else parent.company_country_id),                                             '|', ('company_id', '=', False), ('company_id', 'parent_of', parent.company_id)]"
+                            context="{'append_type_to_tax_name': True}" on_change="1"
+                            can_create="True" can_write="True" />
+                    </list>
+                    <form name="tax_map_form" string="Tax Mapping">
+                        <group>
+                            <field name="tax_src_id" domain="[('type_tax_use', '!=', 'none')]"
+                                context="{'append_type_to_tax_name': True}" can_create="True"
+                                can_write="True" />
+                            <field name="tax_dest_id" domain="[('type_tax_use', '!=', 'none')]"
+                                context="{'append_type_to_tax_name': True}" on_change="1"
+                                can_create="True" can_write="True" />
+                        </group>
+                    </form>
+                </field>
+            </page>
+        </notebook>
+        <field name="note" class="oe-bordered-editor" placeholder="Legal Notes..." />
+    </sheet>
+</form>

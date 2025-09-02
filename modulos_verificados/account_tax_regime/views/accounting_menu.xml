@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+<!-- Cuentas Contables -->
+
+    <menuitem
+        id="menu_account_accounts"
+        name="Cuentas contables"
+        parent="account.menu_finance_configuration"
+        action="account.action_account_form"
+        sequence="70" />
+
+<!-- Asientos Contables -->
+
+        <record id="action_account_move_custom" model="ir.actions.act_window">
+        <field name="name">Asientos Contables</field>
+        <field name="res_model">account.move</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('move_type', 'in', ['entry', 'out_invoice', 'in_invoice'])]</field>
+        <field name="context">{}</field>
+    </record>
+
+    <menuitem
+        id="menu_action_account_move_custom"
+        name="Asientos Contables"
+        parent="account.menu_finance_reports"
+        action="action_account_move_custom"
+        sequence="75" />
+
+<!-- Apuntes Contables -->
+
+        <record id="action_ledger_entry" model="ir.actions.act_window">
+        <field name="name">Apuntes Contables</field>
+        <field name="res_model">account.move.line</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('move_type', 'in', ['entry', 'out_invoice', 'in_invoice'])]</field>
+        <field name="context">{}</field>
+    </record>
+
+    <menuitem
+        id="menu_action_ledger_entry"
+        name="Apuntes Contables"
+        parent="account.menu_finance_reports"
+        action="action_ledger_entry"
+        sequence="76" />
+</odoo>

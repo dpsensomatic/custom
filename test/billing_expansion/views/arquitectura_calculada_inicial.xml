@@ -1,0 +1,133 @@
+<form string="Diario contable">
+                    <field name="company_id" invisible="1" on_change="1"/>
+                    <field name="bank_statements_source" invisible="1"/>
+                    <sheet>
+                        <div name="button_box" class="oe_button_box">
+                            <button class="oe_stat_button" type="action" name="545" icon="fa-book" context="{'search_default_journal_id':id}">
+                                    <div class="o_stat_info">
+                                        <span class="o_stat_text">Asientos contables</span>
+                                    </div>
+                            </button>
+                        </div>
+                        <widget name="web_ribbon" title="Archivado" bg_color="text-bg-danger" invisible="active"/>
+                        <div class="oe_title">
+                            <label for="name"/>
+                            <h1><field name="name" placeholder="Por ejemplo, Facturas de cliente"/></h1>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="active" invisible="1"/>
+                                <field name="type" on_change="1"/>
+                            </group>
+                            <group>
+                                <field name="company_id" options="{'no_create': True}" on_change="1"/>
+                                <field name="country_code" invisible="1"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page name="bank_account" string="Asientos contables">
+                                <group>
+                                    <group string="Información contable">
+                                        <field name="default_account_type" invisible="1"/>
+                                        <field name="refund_sequence" invisible="type not in ['sale', 'purchase']"/>
+               <field name="debit_sequence" invisible="type not in ('sale', 'purchase')"/>
+                                        <field name="payment_sequence" invisible="type not in ('bank', 'cash', 'credit')"/>
+                                        <field name="code" placeholder="Por ejemplo, INV"/>
+                                        <field name="currency_id" options="{'no_create': True}" on_change="1" can_create="True" can_write="True"/>
+                                    </group>
+                                    <group name="bank_account_number" string="Número de cuenta bancaria" invisible="type != 'bank'">
+                                        <field name="company_partner_id" invisible="1"/>
+                                        <field name="bank_account_id" string="Número de cuenta" context="{'default_partner_id': company_partner_id}" on_change="1" can_create="True" can_write="True"/>
+                                        <field name="bank_id" invisible="not bank_account_id" can_create="True" can_write="True"/>
+                                        </group>
+                                    <group name="bank_source" string="Configuración de tarjeta de crédito" invisible="type != 'credit'">
+                                        </group>
+                                </group>
+                            </page>
+                            <page id="inbound_payment_settings" string="Pagos entrantes" name="page_incoming_payments" invisible="type not in ['cash', 'bank', 'credit']">
+                                <field name="available_payment_method_ids" invisible="1" on_change="1"/>
+                                <field name="inbound_payment_method_line_ids" nolabel="1" context="{'default_payment_type': 'inbound'}" on_change="1">
+                                    <list string="Métodos de pago" editable="bottom" decoration-muted="payment_provider_state == 'disabled'">
+                                        <field name="available_payment_method_ids" column_invisible="True"/>
+                                        <field name="payment_type" column_invisible="True"/>
+                                        <field name="company_id" column_invisible="True"/>
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="payment_method_id" options="{'no_create': True, 'no_open': True}" on_change="1" can_create="False" can_write="True"/>
+                                        <field name="name"/>
+                                        <field name="code" column_invisible="True"/>
+                <field name="payment_provider_id" options="{'no_open': True, 'no_create': True}" optional="hide" on_change="1" can_create="True" can_write="True"/>
+                <field name="payment_provider_state" column_invisible="True"/>
+                <button name="action_open_provider_form" type="object" string="CONFIGURAR" class="float-end btn-secondary" invisible="not payment_provider_id"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page id="outbound_payment_settings" string="Pagos salientes" name="page_outgoing_payments" invisible="type not in ['cash', 'bank', 'credit']">
+                                    <field name="outbound_payment_method_line_ids" nolabel="1" context="{'default_payment_type': 'outbound'}" on_change="1">
+                                        <list string="Métodos de pago" editable="bottom">
+                                            <field name="available_payment_method_ids" column_invisible="True"/>
+                                            <field name="payment_type" column_invisible="True"/>
+                                            <field name="company_id" column_invisible="True"/>
+                                            <field name="sequence" widget="handle"/>
+                                            <field name="payment_method_id" options="{'no_create': True, 'no_open': True}" on_change="1" can_create="False" can_write="True"/>
+                                            <field name="name"/>
+                                            </list>
+                                    </field>
+                                    <field name="selected_payment_method_codes" invisible="1"/>
+                                    <group name="outgoing_payment"/>
+                            </page>
+                            <page name="advanced_settings" string="Ajustes avanzados">
+                                <group>
+                                    <group string="Control de accesos">
+                                        <div class="text-muted" colspan="2">Dejar vacío para no establecer un control</div>
+                                        <field name="account_control_ids" widget="many2many_tags" options="{'no_create_edit': True}" can_create="True" can_write="True"/>
+                                        <field name="autocheck_on_post"/>
+                                    </group>
+                                    <!-- email alias -->
+                                    <group class="oe_read_only" name="group_alias_ro" string="Crear facturas de correos electrónicos" invisible="type not in ('sale', 'purchase')">
+                                       <field name="alias_id" on_change="1" can_create="True" can_write="True"/>
+                                    </group>
+                                    <group class="oe_read_only" name="group_alias_ro_general" string="Crear asientos a partir de correos electrónicos" invisible="type != 'general'">
+                                       <field name="alias_id" on_change="1" can_create="True" can_write="True"/>
+                                    </group>
+                                    <field name="display_alias_fields" invisible="1"/>
+                                    <group name="group_alias_no_domain" string="Crear facturas de correos electrónicos" invisible="type not in ('sale', 'purchase') or display_alias_fields">
+                                        <div class="content-group" colspan="2">
+                                            <a type="action" name="523" class="btn btn-link" role="button">
+                                                <i class="oi oi-fw o_button_icon oi-arrow-right"/> Configurar el alias del dominio
+                                            </a>
+                                        </div>
+                                    </group>
+                                    <group name="group_alias_no_domain_general" string="Crear asientos a partir de correos electrónicos" invisible="type != 'general' or display_alias_fields">
+                                        <div class="content-group" colspan="2">
+                                            <a type="action" name="523" class="btn btn-link" role="button">
+                                                <i class="oi oi-fw o_button_icon oi-arrow-right"/> Configurar el alias del dominio
+                                            </a>
+                                        </div>
+                                    </group>
+                                    <group class="oe_edit_only" name="group_alias_edit" string="Crear facturas de correos electrónicos" invisible="type not in ('sale', 'purchase') or not display_alias_fields">
+                                        <label string="Seudónimo de correo electrónico" for="alias_name"/>
+                                        <div class="oe_inline" name="edit_alias" style="display: inline;" dir="ltr">
+                                            <field name="alias_name" placeholder="seudónimo" class="oe_inline"/>@
+                                            <field name="alias_domain_id" class="oe_inline" placeholder="Por ejemplo, miempresa.com" options="{'no_create': True, 'no_open': True}" can_create="True" can_write="True"/>
+                                        </div>
+                                    </group>
+                                    <group class="oe_edit_only" name="group_alias_edit_general" string="Crear asientos a partir de correos electrónicos" invisible="type != 'general' or not display_alias_fields">
+                                        <label string="Seudónimo de correo electrónico" for="alias_name"/>
+                                        <div class="oe_inline" name="edit_alias" style="display: inline;" dir="ltr">
+                                            <field name="alias_name" placeholder="seudónimo" class="oe_inline"/>@
+                                            <field name="alias_domain_id" class="oe_inline" placeholder="Por ejemplo, miempresa.com" options="{'no_create': True, 'no_open': True}" can_create="True" can_write="True"/>
+                                        </div>
+                                    </group>
+                                    <!-- edi -->
+                                    <group name="group_edi_config" string="Intercambio de datos electrónicos" invisible="1"/>
+                                    <!-- email alias end -->
+                                    <group string="Referencias de pago" invisible="type != 'sale'">
+                                        <field name="invoice_reference_type"/>
+                                        <field name="invoice_reference_model" invisible="invoice_reference_type == 'none'"/>
+                                    </group>
+                                </group>
+                            </page>
+                        </notebook>
+                    </sheet>
+                <chatter/>
+                </form>

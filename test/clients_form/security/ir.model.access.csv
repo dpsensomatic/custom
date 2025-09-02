@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_importance_level_user,access.importance.level,model_importance_level,base.group_user,1,1,1,1
+access_customer_source_options_user,access.customer.source.options,model_customer_source_options,base.group_user,1,1,1,1
+access_clasification_options_user,access.clasification.options,model_clasification_options,base.group_user,1,1,1,1
+

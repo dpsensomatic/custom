@@ -1,0 +1,36 @@
+<odoo>
+
+    <!-- Acción -->
+    <record id="payroll_action_window" model="ir.actions.act_window">
+        <field name="name">payroll records</field>
+        <field name="res_model">hr.payroll</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="action_hr_employee_nomina" model="ir.actions.act_window">
+        <field name="name">Empleados</field>
+        <field name="res_model">hr.employee</field>
+        <field name="view_mode">kanban,list,form</field>
+    </record>
+
+    <!-- Menu Root -->
+    <menuitem name="Nómina" id="payroll_menu_root" />
+
+    <!-- Submenus del Root -->
+    <menuitem name="Tablero" id="payroll.chart" parent="payroll_menu_root" />
+    <menuitem name="Empleado" id="payroll.employee" parent="payroll_menu_root" /> 
+    <menuitem name="Nómina" id="payroll.payroll" parent="payroll_menu_root" />
+    <menuitem name="Reportes" id="payroll.reports" parent="payroll_menu_root" />
+    <menuitem name="Configuracion" id="payroll.configuration" parent="payroll_menu_root" />
+    <!-- <menuitem name="Recibos de nomina" id="payroll.payroll_receipts" parent="payroll_menu_root"
+    />-->
+
+    <!-- Submenu de Tableros -->
+    <menuitem name="Tablero" id="payroll.chart_test" parent="payroll.chart"
+        action='payroll_action_window' />
+
+    <!-- Submenu de Empleados -->
+    <menuitem name="Empleados" id="payroll.employee_form" parent="payroll.employee"
+        action='action_hr_employee_nomina' />
+
+</odoo>

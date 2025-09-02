@@ -1,0 +1,52 @@
+<odoo>
+
+    <!-- Action -->
+    <record id="action_hr_updates" model="ir.actions.act_window">
+        <field name="name">Novedades</field>
+        <field name="res_model">hr.updates</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- Form -->
+    <record id='views_hr_updates_form' model="ir.ui.view">
+        <field name='name'>hr.updates.form</field>
+        <field name='model'>hr.updates</field>
+        <field name='arch' type='xml'>
+            <form string='Novedades'>
+                <sheet>
+                    <group>
+                        <field name='employee_id' />
+                        <field name='type' />
+                        <field name='date_start' />
+                        <field name='date_end' />
+                        <field name='value_type' />
+                        <field name='value' />
+                        <field name='state' />
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- List -->
+    <record id='views_hr_updates_list' model="ir.ui.view">
+        <field name='name'>hr.updates.list</field>
+        <field name='model'>hr.updates</field>
+        <field name='arch' type='xml'>
+            <list>
+                <field name='employee_id' />
+                <field name='type' />
+                <field name='date_start' />
+                <field name='date_end' />
+                <field name='value_type' />
+                <field name='value' />
+                <field name='state' />
+            </list>
+        </field>
+    </record>
+
+    <!-- Menu Item -->
+    <menuitem name="Novedades" id="payroll.updates" parent="payroll.configuration"
+        action='action_hr_updates' />
+
+</odoo>

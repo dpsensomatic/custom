@@ -1,0 +1,21 @@
+<odoo>
+    <record id="x_account_fiscal_form" model="ir.ui.view">
+        <field name="name">x_account_fiscal_form.account.fiscal.position.form</field>
+        <field name="model">account.fiscal.position</field>
+        <field name="inherit_id" ref="account.view_account_position_form" />
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='tax_mapping']" position="after">
+                <page name="account_mapping" string="Mapeo de Cuentas">
+                    <field name="account_map_ids" widget="one2many" nolabel="1">
+                        <list name="account_map_list" string="Mapeo de cuentas" editable="bottom"
+                            no_open="1">
+                            <field name="account_src_id" can_create="True" can_write="True" />
+                            <field name="account_dest_id" on_change="1" can_create="True"
+                                can_write="True" />
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

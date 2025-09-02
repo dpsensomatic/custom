@@ -1,0 +1,21 @@
+<odoo>
+    <record id="x_product_template_account" model="ir.ui.view">
+        <field name="name">product.template.product.form</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_only_form_view" />
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='inventory']" position="after">
+                <page string="Contabilidad" name="contabilidad">
+                    <group name="accounts">
+                        <group name="expense">
+                            <field name="property_account_expense_id" />
+                        </group>
+                        <group name="income">
+                            <field name="property_account_income_id" />
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

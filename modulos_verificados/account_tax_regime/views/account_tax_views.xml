@@ -1,0 +1,16 @@
+<odoo>
+    <record id='x_tax_form' model='ir.ui.view'>
+        <field name='name'>x_tax_form.account.tax.form</field>
+        <field name='model'>account.tax</field>
+        <field name='inherit_id' ref='account.view_tax_form' />
+        <field name='arch' type='xml'>
+            <xpath expr='//field[@name="active"]' position='after'>
+                <field name='minimum_base_amount' string='Base minima del impuesto' />
+            </xpath>
+            <xpath expr="//field[@name='type_tax_use']" position="after">
+                <field name="is_withholding" />
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
