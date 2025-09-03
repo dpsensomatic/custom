@@ -20,13 +20,8 @@ Long description of module's purpose
     'data': [
         'security/ir.model.access.csv',
         'views/hr_payroll_menu_views.xml',
-        # 'views/hr_bonus_benefits_views.xml',
-        'views/hr_contract_views.xml',
-        # 'views/hr_contribution_accounts_views.xml',
-        'views/hr_payroll_views.xml',
-        'views/res_company_views.xml',        
+        'views/hr_parameters_views.xml',
         'views/hr_payroll_events_views.xml',
-        # 'views/hr_updates_views.xml',
-        # 'views/hr_work_rota_views.xml',
+        'views/hr_payroll_views.xml',
     ],
 }

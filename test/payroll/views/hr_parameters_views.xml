@@ -1,0 +1,51 @@
+<odoo>
+
+    <!-- Form -->
+    <record id="view_hr_parameters_form" model="ir.ui.view">
+        <field name="name">hr.parameters.form</field>
+        <field name="model">hr.parameters</field>
+        <field name="arch" type="xml">
+            <form>
+                <group>
+                    <field name="year" />
+                </group>
+                <group>
+                    <field name="minimum_wage" />
+                    <field name="transport_allowance" />
+                    <field name="uvt_value" />
+                </group>
+                <group>
+                    <field name="health_ceiling" />
+                    <field name="pension_ceiling" />
+                </group>
+            </form>
+        </field>
+    </record>
+    
+    <!-- List -->
+    <record id="view_hr_parameters_list" model="ir.ui.view">
+        <field name="name">hr.parameters.list</field>
+        <field name="model">hr.parameters</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="year" />
+                <field name="minimum_wage" />
+                <field name="transport_allowance" />
+                <field name="uvt_value" />
+                <field name="health_ceiling" />
+                <field name="pension_ceiling" />
+            </list>
+        </field>
+    </record>
+    
+    <!-- Action -->
+    <record id="action_hr_parameters" model="ir.actions.act_window">
+        <field name="name">Parametros</field>
+        <field name="res_model">hr.parameters</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- Menu -->
+    <menuitem id="menu_hr_parameters" name="Parámetros Contabilidad"
+        parent="payroll.configuration" action="action_hr_parameters" />
+</odoo>

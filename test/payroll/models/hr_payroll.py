@@ -1,111 +1,179 @@
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api
 from odoo.exceptions import UserError
-import ipdb 
+from datetime import timedelta
+import ipdb
 import logging
 
 _logger = logging.getLogger(__name__)
 
+
 class HrPayroll(models.Model):
-    # Definicion del modelo
     _name = "hr.payroll"
     _description = "Nómina"
 
-    # Campos del modelo
     name = fields.Char(string="Nombre", required=True, default="Nómina")
     date_start = fields.Date(string="Fecha inicio", required=True)
     date_end = fields.Date(string="Fecha fin", required=True)
-    line_ids = fields.One2many("hr.payroll.line", "payroll_id", string="Líneas de nómina")
     state = fields.Selection([
         ('draft', 'Borrador'),
         ('confirmed', 'Confirmada'),
         ('done', 'Cerrada'),
     ], string="Estado", default="draft")
 
+    line_ids = fields.One2many("hr.payroll.line", "payroll_id", string="Líneas de nómina")
+
+    # -------------------------
+    # Helpers pequeños
+    # -------------------------
+    def _empty_totals(self):
+        """Diccionario base con todas las claves que usamos.
+        Si agregas nuevos componentes, añádelos aquí."""
+        return {
+            "gross": 0.0,
+            "deductions": 0.0,
+            "comissions": 0.0,
+            "sick": 0.0,
+            "arl": 0.0,
+            "extra_hours": 0.0,
+            "night_surcharge": 0.0,
+            "other": 0.0,
+        }
+        
+        
+    def _expected_workdays(self, contract, date_start, date_end):
+        """Placeholder para calcular los días esperados de trabajo en el período.
+        Ahora devuelve 30 por compatibilidad; reemplazar con lógica de rota/calendar."""
+        # TODO: Implementar rota/calendar -> devuelve número de días trabajables en el periodo.
+        return 30
+
+    # -------------------------
+    # Acción principal
+    # -------------------------
     def action_generate_lines(self):
-        """Genera automáticamente una línea de nómina consolidada por empleado"""
+        """Genera automáticamente una línea de nómina consolidada por empleado."""
         self.ensure_one()
 
         if not self.date_start or not self.date_end:
             raise UserError("Debe definir las fechas de inicio y fin.")
+        
+        employees = self.env['hr.employee'].search([('contract_id', '!=', False)])
+        if not employees:
+            _logger.info("No hay empleados con contrato.")
+            self.line_ids = [(5, 0, 0)]
+            return
+        
+        # if any(emp.contract_id.state == 'draft' for emp in employees):
+        #     _logger.info("Hay empleados con contratos en Borrador")
+        #     self.line_ids = [(5, 0, 0)]
+        #     return
+        
+        # quedarte solo con los que están en open
+        employees = employees.filtered(lambda e: e.contract_id.state == 'open')
 
-        employees = self.env['hr.employee'].search([('contract_id.state', '=', 'open')])
+        employee_ids = employees.ids
+
+        # 2) Prefetch: traer todos los eventos del período para todos los empleados
+        events = self.env['hr.payroll.events'].search([
+            ('employee_id', 'in', employee_ids),
+            ('date', '<=', self.date_end),   # empieza antes o dentro del periodo
+            ('date_end', '>=', self.date_start),  # termina dentro o después del periodo
+        ])
+
+
+        # 3) Agrupar eventos por empleado (dict: emp_id -> recordset)
+        events_by_emp = {}
+        for ev in events:
+            events_by_emp.setdefault(ev.employee_id.id, []).append(ev)
+
         lines = []
-
         for emp in employees:
             contract = emp.contract_id
             if not contract:
                 continue
 
-            # Auxilio de Transporte
-            if contract.transportation_allowance == True:
-                allow_value = contract.company_id.transportation_allowance
-            else:
-                allow_value = 0
-            # Buscar eventos del empleado en el periodo
-            events = self.env['hr.payroll.events'].search([
-                ('employee_id', '=', emp.id),
-                ('date', '>=', self.date_start),
-                ('date', '<=', self.date_end),
-            ])
+            # Totales por empleado (inicializar)
+            totals = self._empty_totals()
+            unpaid_days = 0  # acumula cantidad de días que restan del salario (incapacidades/permiso no remunerado)
 
-            # Consolidar valores
-            comissions = 0.0
-            total_gross = 0.0
-            total_deductions = 0.0
-            extra_hours = 0.0
-            night_surcharge = 0.0
-            sick_leave = 0.0
-            arl_leave = 0.0
-            unpaid_days = 0  # aquí acumulamos los días no trabajados
+            emp_events = events_by_emp.get(emp.id, [])
+            for ev in emp_events:
+                vals = ev.compute_value(self.date_start, self.date_end) or {}
+                # sumar todas las claves retornadas por compute_value
+                for k, v in vals.items():
+                    # solo sumar numéricos
+                    try:
+                        totals[k] = totals.get(k, 0.0) + float(v or 0.0)
+                    except Exception:
+                        pass
 
-            salario_mensual = contract.wage
-            valor_dia = salario_mensual / 30
+                # para el descuento por días usamos 'quantity' en ciertos tipos
 
-            for ev in events:
-                vals = ev.compute_value()
-                comissions += vals.get('comissions', 0.0)
-                arl_leave += vals.get('arl', 0.0)  
-                sick_leave += vals.get('sick', 0.0)  
-                extra_hours += vals.get('extra_hours', 0.0)
-                night_surcharge += vals.get('night_surcharge', 0.0)
-                # total_gross += vals.get('gross', 0.0)
-                total_deductions += vals.get('deductions', 0.0)
-                            # Si es incapacidad o licencia no remunerada, descuentan días al salario
+                if ev.type in ['sick_leave', 'arl_leave', 'unpaid_leave']:
+                    event_start = ev.date
+                    event_end = ev.date + timedelta(days=(ev.quantity or 0) - 1)
 
-                if ev.type in ['sick_leave', 'arl_leave','unpaid_leave']:
-                    unpaid_days += ev.quantity
+                    # calcular la intersección entre evento y periodo de la nómina
+                    overlap_start = max(event_start, self.date_start)
+                    overlap_end = min(event_end, self.date_end)
+                    if overlap_start <= overlap_end:
+                        days_in_period = (overlap_end - overlap_start).days + 1
+                        unpaid_days += days_in_period
+            
+            params = self.env["hr.parameters"].get_parameters_for_date(self.date_start)
+            transportation_allowance = params.get("transport_allowance", 0.0)
+            minimun_wage = params.get('minimum_wage',0.0)
+            two_minimun_wage = minimun_wage*2   
 
-            # Ajustar salario por días trabajados
-            days_worked = 30 - unpaid_days
-            base_wage = valor_dia * days_worked
-                
-            total_gross = base_wage + sick_leave + arl_leave + extra_hours + allow_value + night_surcharge + comissions
-            # Crear **una sola línea** con totales
-            lines.append((0, 0, {
+
+            # calcular días trabajados y salario proporcional
+            expected = self._expected_workdays(contract, self.date_start, self.date_end) or 30
+            days_worked = max(0, expected - unpaid_days)
+            # wage_earned = (contract.wage / expected) * days_worked
+            # Evitamos división por 0:
+            wage_earned = (contract.wage * (days_worked / expected)) if expected else 0.0
+            
+            # Auxilio de transporte: control seguro si no existe el campo booleano
+            allow_value = 0.0
+            # Si usas un boolean en contrato para indicar si recibe auxilio:
+            if transportation_allowance <= two_minimun_wage:
+
+                allow_value = (transportation_allowance/30)*days_worked
+
+
+            # construir total devengado agregando wage_earned y lo que venga en totals
+            total_gross = wage_earned + totals.get('sick', 0.0) + totals.get('arl', 0.0) \
+                          + totals.get('extra_hours', 0.0) + totals.get('night_surcharge', 0.0) \
+                          + totals.get('comissions', 0.0) + totals.get('other', 0.0) + allow_value
+
+            total_deductions = totals.get('deductions', 0.0)
+
+            # construir línea
+            vals_line = {
                 'employee_id': emp.id,
                 'contract_id': contract.id,
                 'base_wage': contract.wage,
-                'wage_earned': base_wage,
-                'days_worked': days_worked, 
-                'sick_leave':sick_leave + arl_leave,
-                'overtime_hours': extra_hours,
-                'transportation_allowance': allow_value,  # Falta por ajustar a los días trabajados
-                'night_surcharge': night_surcharge,
-                'other_earnings':comissions,
+                'wage_earned': wage_earned,
+                'days_worked': days_worked,
+                'sick_leave': totals.get('sick', 0.0)+ totals.get('arl', 0.0),
+                'overtime_hours': totals.get('extra_hours', 0.0),
+                'transportation_allowance': allow_value,
+                'night_surcharge': totals.get('night_surcharge', 0.0),
+                'other_earnings': totals.get('comissions', 0.0) + totals.get('other', 0.0),
                 'gross': total_gross,
-                'health_contribution': 0,
-                'pension_contribution': 0,
-                'other_deductions':0,
+                'health_contribution': 0.0,   # <-- puedes calcular después
+                'pension_contribution': 0.0,  # <-- ...
+                'other_deductions': 0.0,
                 'deductions': total_deductions,
-                'net': total_gross - total_deductions,   
-            }))
-            # ipdb.set_trace()
+                'net': total_gross - total_deductions,
+            }
+            lines.append((0, 0, vals_line))
 
-        # Limpiar y asignar las líneas
+            _logger.info("Payroll: emp=%s expected=%s unpaid_days=%s days_worked=%s totals=%s",
+                         emp.name, expected, unpaid_days, days_worked, totals)
+
+        # escribir líneas (limpiando las anteriores)
         self.line_ids = [(5, 0, 0)] + lines
-
-            
 
 
     def action_generate_accounting_entries(self):
