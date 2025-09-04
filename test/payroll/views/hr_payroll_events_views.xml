@@ -19,6 +19,7 @@
                         <field name='type'/>
                         <field name='date'/>
                         <field name='quantity'/>
+                        <field name='date_end'/>
                         <field name='unit'/>
                     </group>
                 </sheet>
@@ -37,6 +38,7 @@
                 <field name='type'/>
                 <field name='date'/>
                 <field name='quantity'/>
+                <field name='date_end'/>
                 <field name='unit'/>
             </list>
         </field>

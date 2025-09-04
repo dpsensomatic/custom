@@ -86,6 +86,8 @@
         <field name="arch" type="xml">
             <list>
                 <field name="name"/>
+                <field name="date_start"/>
+                <field name="date_end"/>
             </list>
         </field>
     </record>
