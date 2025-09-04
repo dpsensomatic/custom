@@ -9,8 +9,19 @@ class HrParameters(models.Model):
     minimum_wage = fields.Float(string="Salario Mínimo", required=True)
     transport_allowance = fields.Float(string="Auxilio Transporte")
     uvt_value = fields.Float(string="Valor UVT")
-    health_ceiling = fields.Float(string="Tope Salud")
-    pension_ceiling = fields.Float(string="Tope Pensión")
+    company_eps_percentage = fields.Float(string="EPS Empresa")
+    employee_eps_percentage = fields.Float(string="EPS Trabajador")
+    company_pension_percentage = fields.Float(string="Pensión Empresa")
+    employee_pension_percentage = fields.Float(string="Pensión Trabajador")
+    arl_fee = fields.Selection([
+        ('i','I 0.522%'),
+        ('ii','II 1.044%'),
+        ('iii','III 2.436%'),
+        ('iv','IV 4.350%'),
+        ('v','V 6.960%'),
+        ],string='Tarifa ARL')
+    
+    
     
     _sql_constraints = [
         ("year_unique", "unique(year)", "Ya existe un registro de parámetros para este año."),

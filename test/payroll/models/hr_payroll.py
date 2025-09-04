@@ -1,3 +1,4 @@
+
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api
 from odoo.exceptions import UserError
@@ -42,10 +43,11 @@ class HrPayroll(models.Model):
         
         
     def _expected_workdays(self, contract, date_start, date_end):
-        """Placeholder para calcular los días esperados de trabajo en el período.
-        Ahora devuelve 30 por compatibilidad; reemplazar con lógica de rota/calendar."""
-        # TODO: Implementar rota/calendar -> devuelve número de días trabajables en el periodo.
+        """Normaliza todos los meses a 30 días (base contable de 360 días/año)."""
+        if not date_start or not date_end:
+            return 30
         return 30
+    
 
     # -------------------------
     # Acción principal
@@ -126,19 +128,24 @@ class HrPayroll(models.Model):
             two_minimun_wage = minimun_wage*2   
 
 
-            # calcular días trabajados y salario proporcional
-            expected = self._expected_workdays(contract, self.date_start, self.date_end) or 30
+            expected = self._expected_workdays(contract, self.date_start, self.date_end)
+            
+            # asegurarnos de que unpaid_days nunca deje pasar más de 30 días
             days_worked = max(0, expected - unpaid_days)
-            # wage_earned = (contract.wage / expected) * days_worked
-            # Evitamos división por 0:
+            
+            # si el mes tiene 31 y todo fue incapacidad → unpaid_days=31
+            # corregimos a un tope de expected (30)
+            if unpaid_days > expected:
+                unpaid_days = expected
+                days_worked = 0
             wage_earned = (contract.wage * (days_worked / expected)) if expected else 0.0
             
             # Auxilio de transporte: control seguro si no existe el campo booleano
             allow_value = 0.0
             # Si usas un boolean en contrato para indicar si recibe auxilio:
-            if transportation_allowance <= two_minimun_wage:
-
+            if contract.wage <= two_minimun_wage:
                 allow_value = (transportation_allowance/30)*days_worked
+
 
 
             # construir total devengado agregando wage_earned y lo que venga en totals
@@ -180,4 +187,4 @@ class HrPayroll(models.Model):
         """Placeholder: evita error de validación hasta implementar la lógica contable."""
         for record in self:
             # No hace nada por ahora, solo evita el error en la vista.
-            pass
+            pass 
