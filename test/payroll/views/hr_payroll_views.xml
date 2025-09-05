@@ -42,9 +42,14 @@
                                     <field name="gross"/>
                                     <field name="health_contribution"/>
                                     <field name="pension_contribution"/>
+                                    <field name="company_health_contribution"/>
+                                    <field name="company_pension_contribution"/>
+                                    <field name="arl_contribution"/>
                                     <field name='other_deductions'/>
                                     <field name="deductions"/>
+                                    <field name="total_deductions"/>
                                     <field name="net"/>
+                                    <field name="total_net"/>
                                 </list>
                                 <form>
                                     <group>
@@ -61,9 +66,14 @@
                                     <field name="gross"/>
                                     <field name="health_contribution"/>
                                     <field name="pension_contribution"/>
+                                    <field name="company_health_contribution"/>
+                                    <field name="company_pension_contribution"/>
+                                    <field name="arl_contribution"/>
                                     <field name='other_deductions'/>
                                     <field name="deductions"/>
+                                    <field name="total_deductions"/>
                                     <field name="net"/>
+                                    <field name="total_net"/>
                                     </group>
                                 </form>
                             </field>

@@ -19,7 +19,7 @@ class HrParameters(models.Model):
         ('iii','III 2.436%'),
         ('iv','IV 4.350%'),
         ('v','V 6.960%'),
-        ],string='Tarifa ARL')
+        ],string='Tarifa ARL', default='i', required=True)
     
     
     
@@ -38,13 +38,31 @@ class HrParameters(models.Model):
                 "minimum_wage": 0.0,
                 "transport_allowance": 0.0,
                 "uvt_value": 0.0,
-                "health_ceiling": 0.0,
-                "pension_ceiling": 0.0,
+                "company_eps_percentage": 0.0,
+                "employee_eps_percentage": 0.0,
+                "company_pension_percentage": 0.0,
+                "employee_pension_percentage": 0.0,
+                "arl_fee": 0.0,                
             }
+        arl_fee = record.arl_fee
+        if arl_fee == 'i':
+            arl_fee_value = 0.522
+        elif arl_fee == 'ii':
+            arl_fee_value = 1.044
+        elif arl_fee == 'iii':
+            arl_fee_value = 2.436
+        elif arl_fee == 'iv':
+            arl_fee_value = 4.350
+        elif arl_fee == 'v':
+            arl_fee_value = 6.960
         return {
+            
             "minimum_wage": record.minimum_wage,
             "transport_allowance": record.transport_allowance,
             "uvt_value": record.uvt_value,
-            "health_ceiling": record.health_ceiling,
-            "pension_ceiling": record.pension_ceiling,
+            "company_eps_percentage": record.company_eps_percentage,
+            "employee_eps_percentage": record.employee_eps_percentage,
+            "company_pension_percentage": record.company_pension_percentage,
+            "employee_pension_percentage": record.employee_pension_percentage,
+            "arl_fee": arl_fee_value,
         }

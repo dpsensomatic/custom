@@ -10,18 +10,44 @@
                     <field name="year" />
                 </group>
                 <group>
-                    <field name="minimum_wage" />
-                    <field name="transport_allowance" />
-                    <field name="uvt_value" />
-                </group>
-                <group>
-                    <field name="health_ceiling" />
-                    <field name="pension_ceiling" />
+                    <group string="Valores">
+                        <field name="minimum_wage" />
+                        <field name="transport_allowance" />
+                        <field name="uvt_value" />
+                    </group>
+                    <group string="Aportes seguridad social">
+                        <label for="company_eps_percentage" />
+                        <div>
+                            <field name="company_eps_percentage" class="oe_inline" nolabel="1" />
+                            <span class="o_form_label oe_inline">%</span>
+                        </div>
+
+                        <label for="employee_eps_percentage" />
+                        <div>
+                            <field name="employee_eps_percentage" class="oe_inline" nolabel="1" />
+                            <span class="o_form_label oe_inline">%</span>
+                        </div>
+
+                        <label for="company_pension_percentage" />
+                        <div>
+                            <field name="company_pension_percentage" class="oe_inline" nolabel="1" />
+                            <span class="o_form_label oe_inline">%</span>
+                        </div>
+
+
+                        <label for="employee_pension_percentage" />
+                        <div>
+                            <field name="employee_pension_percentage" class="oe_inline" nolabel="1" />
+                            <span class="o_form_label oe_inline">%</span>
+                        </div>
+
+                        <field name="arl_fee" class='oe_inline'/>
+                    </group>
                 </group>
             </form>
         </field>
     </record>
-    
+
     <!-- List -->
     <record id="view_hr_parameters_list" model="ir.ui.view">
         <field name="name">hr.parameters.list</field>
@@ -32,12 +58,12 @@
                 <field name="minimum_wage" />
                 <field name="transport_allowance" />
                 <field name="uvt_value" />
-                <field name="health_ceiling" />
-                <field name="pension_ceiling" />
+                <field name="company_eps_percentage" />
+                <field name="employee_eps_percentage" />
             </list>
         </field>
     </record>
-    
+
     <!-- Action -->
     <record id="action_hr_parameters" model="ir.actions.act_window">
         <field name="name">Parametros</field>

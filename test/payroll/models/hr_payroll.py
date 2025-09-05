@@ -152,8 +152,37 @@ class HrPayroll(models.Model):
             total_gross = wage_earned + totals.get('sick', 0.0) + totals.get('arl', 0.0) \
                           + totals.get('extra_hours', 0.0) + totals.get('night_surcharge', 0.0) \
                           + totals.get('comissions', 0.0) + totals.get('other', 0.0) + allow_value
+                          
+            parameters = self.env['hr.parameters'].get_parameters_for_date(self.date_start)
+            company_pension_percentage = parameters['company_pension_percentage']
+            company_health_percentage = parameters['company_eps_percentage']
+            arl_fee = parameters['arl_fee']
+            employee_eps_percentage = parameters['employee_eps_percentage']
+            employee_pension_percentage = parameters['employee_pension_percentage']
+            
+            
 
-            total_deductions = totals.get('deductions', 0.0)
+            
+            arl_fee_value = 0.0
+            company_health_contribution = 0.0
+            company_pension_contribution = 0.0
+            health_contributions = 0.0
+            pension_contributions = 0.0
+            total_deductions = 0.0
+            total_deductions_employee = 0.0
+            base_contribution = total_gross - allow_value 
+            if base_contribution > 0:
+                health_contributions = base_contribution * (employee_eps_percentage / 100)
+                pension_contributions = base_contribution * (employee_pension_percentage / 100)
+                if total_gross >minimun_wage * 10:
+                    company_health_contribution = base_contribution * (company_health_percentage / 100)
+                else: 
+                    company_health_contribution = 0.0
+                company_pension_contribution = base_contribution  * (company_pension_percentage / 100)
+                arl_fee_value = (base_contribution * (arl_fee / 100))
+                total_deductions_employee = health_contributions + pension_contributions
+                total_deductions = total_deductions_employee + arl_fee_value +company_health_contribution+ company_pension_contribution
+            # ...existing code...
 
             # construir línea
             vals_line = {
@@ -168,11 +197,16 @@ class HrPayroll(models.Model):
                 'night_surcharge': totals.get('night_surcharge', 0.0),
                 'other_earnings': totals.get('comissions', 0.0) + totals.get('other', 0.0),
                 'gross': total_gross,
-                'health_contribution': 0.0,   # <-- puedes calcular después
-                'pension_contribution': 0.0,  # <-- ...
+                'health_contribution': health_contributions,   # <-- puedes calcular después
+                'pension_contribution': pension_contributions, 
+                'company_health_contribution': company_health_contribution,   # <-- puedes calcular después
+                'company_pension_contribution': company_pension_contribution,# <-- ...
+                'arl_contribution': arl_fee_value,
                 'other_deductions': 0.0,
-                'deductions': total_deductions,
+                'deductions': total_deductions_employee,
+                'total_deductions': total_deductions,
                 'net': total_gross - total_deductions,
+                'total_net': total_gross + total_deductions,
             }
             lines.append((0, 0, vals_line))
 

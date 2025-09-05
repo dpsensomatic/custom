@@ -20,15 +20,20 @@ class HrPayrollLine(models.Model):
     overtime_hours = fields.Float(string="Horas Extras")  # horas extras
     night_surcharge = fields.Float(string="Recargo Nocturno")  # recargo nocturno
     other_earnings = fields.Float(string="Otros devengados")  # otros ingresos
-    gross = fields.Float(string="Total Devengados", compute="_compute_totals", store=True)
+    gross = fields.Float(string="Total Devengados", store=True)
 
     # Deducciones
     health_contribution = fields.Float(string="Aportes Salud")
     pension_contribution = fields.Float(string="Aportes Pension")
+    company_health_contribution = fields.Float(string="Aportes Salud Empresa")
+    company_pension_contribution = fields.Float(string="Aportes Pension Empresa")
+    arl_contribution = fields.Float(string="Aportes ARL")
     other_deductions = fields.Float(string="Otras Deducciones")
-    deductions = fields.Float(string="Deducciones", compute="_compute_totals", store=True)
+    deductions = fields.Float(string="Deducciones", store=True)
+    total_deductions = fields.Float(string="Total Deducciones", store=True)
 
     # Total a pagar
-    net = fields.Float(string="Neto a Pagar", compute="_compute_totals", store=True)
+    net = fields.Float(string="Neto a Pagar", store=True)
+    total_net = fields.Float(string="Total Neto a Pagar", store=True)
 
 
