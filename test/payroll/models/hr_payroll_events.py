@@ -6,9 +6,17 @@ import logging
 _logger = logging.getLogger(__name__)
 
 class HrPayrollEvents(models.Model):
+    # ==========================
+    # Definición del modelo
+    # ==========================
     _name = 'hr.payroll.events'
     _description = 'Eventos de Nomina'
-
+    # ==========================
+        
+        
+    # ==========================
+    # Campos del modelo
+    # ==========================
     employee_id = fields.Many2one('hr.employee', string="Empleado", required=True)
     contract_id = fields.Many2one("hr.contract", string="Contrato", compute ='_compute_employee_contract')
     type = fields.Selection([
@@ -33,15 +41,29 @@ class HrPayrollEvents(models.Model):
         ('unit', 'Unidad'),
         ('hour', 'Hora')
     ], string='Tipos de Unidad')
+    # ==========================
     
+    
+    # ==========================
+    # Calculo del campo contract_id
+    # ==========================
+    #Cuando detecta un cambio en employee_id, ejecuta el método _compute_employee_contract
     @api.depends('employee_id')
+    
+    # Método que asigna el contrato del empleado al campo contract_id
     def _compute_employee_contract(self):
         for record in self:
             if record.employee_id and record.employee_id.contract_id:
                 record.contract_id = record.employee_id.contract_id
             else:
                 record.contract_id = False
+    # ==========================
 
+
+    # ==========================
+    # Cálculo del campo date_end
+    # ==========================
+    # El campo date_end se calcula automáticamente sumando la cantidad de días (quantity) a la fecha de inicio (date).
     @api.depends("date", "quantity")
     def _compute_date_end(self):
         for record in self:
@@ -49,23 +71,39 @@ class HrPayrollEvents(models.Model):
                 record.date_end = record.date + timedelta(days=record.quantity - 1)
             else:
                 record.date_end = record.date
+    # ==========================
+    
 
-    def compute_value(self, payroll_start=None, payroll_end=None):
+    # ==========================
+    # Cálculo del valor de la novedad
+    # ==========================
+    # Método que calcula el valor de la novedad, recibe 3 parámetros
+    # - self: el registro actual de hr.payroll.events
+    # - payroll_start: fecha de inicio del período de nómina (opcional)
+    # - payroll_end: fecha de fin del período de nómina (opcional)
+    def _compute_value(self, payroll_start=None, payroll_end=None):
         """Devuelve {'gross': X, 'deductions': Y, ...} según el tipo de novedad.
         Si payroll_start y payroll_end están definidos, solo cuenta los días dentro de ese rango.
         """
+        # Asegurarse de que solo se llame en un registro
         self.ensure_one()
 
+        #
         if not self.contract_id:
-            return {"gross": 0.0, "deductions": 0.0, 'sick': 0.0,
-                    "extra_hours": 0.0, "night_surcharge": 0.0,
-                    'other': 0.0, 'arl': 0.0, 'comissions': 0.0}
+            return {                # Employee info
+                'sick_leave': 0.0,
+                'overtime_hours': 0.0,
+                'night_surcharge': 0.0,
+                'other_earnings':0.0,
+                'gross': 0.0,
+                'net':0.0,
+                }
 
-        mensual_wage = self.contract_id.wage
+        wage = self.contract_id.wage
         params = self.env["hr.parameters"].get_parameters_for_date(self.date)
         minimum_wage = params.get("minimum_wage", 0.0)
         minimum_day_value = minimum_wage/30        
-        day_value = mensual_wage / 30
+        day_value = wage / 30
         day_value_percentage = day_value * 0.6667
         hour_value = day_value / 8
 
@@ -92,7 +130,7 @@ class HrPayrollEvents(models.Model):
         elif self.type == "night_overtime":
             result["extra_hours"] = effective_days * hour_value * 1.75
         elif self.type == "commissions":
-            result["comissions"] = effective_days * mensual_wage * 1.10
+            result["comissions"] = effective_days * wage * 1.10
         elif self.type == "sunday_overtime":
             result["extra_hours"] = effective_days * hour_value * 2.0
         elif self.type == "sick_leave":
@@ -136,7 +174,7 @@ class HrPayrollEvents(models.Model):
             result["sick"] = total_payment
         elif self.type == "arl_leave":
             total_payment = 0.0
-            if mensual_wage < minimum_wage:
+            if wage < minimum_wage:
                 total_payment = effective_days * minimum_day_value * 1
             else:
                 total_payment = effective_days * day_value * 1
