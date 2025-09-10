@@ -50,6 +50,13 @@
                                     <field name="total_deductions"/>
                                     <field name="net"/>
                                     <field name="total_net"/>
+
+
+                                    <field name="service_bonus"/>
+                                    <field name="severance"/>
+                                    <field name="interest_on_severance"/>
+                                    <field name="vacations"/>
+                                    <field name="total_provisions"/>
                                 </list>
                                 <form>
                                     <group>
@@ -74,6 +81,13 @@
                                     <field name="total_deductions"/>
                                     <field name="net"/>
                                     <field name="total_net"/>
+
+                                    
+                                    <field name="service_bonus"/>
+                                    <field name="severance"/>
+                                    <field name="interest_on_severance"/>
+                                    <field name="vacations"/>
+                                    <field name="total_provisions"/>
                                     </group>
                                 </form>
                             </field>
@@ -103,6 +117,6 @@
     </record>
 
     <!-- Menu Item -->
-    <menuitem name="Devengados" id="payroll.accruals" parent="payroll.payroll" action='action_hr_payroll'/>
+    <menuitem name="Devengados" id="payroll.accruals" parent="payroll.payroll" action='action_hr_payroll' sequence='1'/>
 
 </odoo>
