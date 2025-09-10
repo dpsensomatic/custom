@@ -31,9 +31,19 @@ class HrPayrollLine(models.Model):
     other_deductions = fields.Float(string="Otras Deducciones")
     deductions = fields.Float(string="Deducciones", store=True)
     total_deductions = fields.Float(string="Total Deducciones", store=True)
+    
+    #prestaciones sociales
+    service_bonus = fields.Float(string="Prima", store=True)
+    severance = fields.Float(string="Cesantías", store=True)
+    interest_on_severance = fields.Float(string="Intereses Cesantías", store=True)
+    vacations = fields.Float(string="Vacaciones", store=True)
+    total_provisions = fields.Float(string="Total Prestaciones Sociales", store=True)
 
     # Total a pagar
     net = fields.Float(string="Neto a Pagar", store=True)
     total_net = fields.Float(string="Total Neto a Pagar", store=True)
+    
+    
+    
 
 

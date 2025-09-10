@@ -55,6 +55,13 @@ class HrPayroll(models.Model):
                 'company_health_contribution': 0.0, 
                 'company_pension_contribution': 0.0,
                 'total_net': 0.0,
+                
+                # Social benefits
+                'service_bonus': 0.0,
+                'severance': 0.0,
+                'interest_on_severance': 0.0,
+                'vacations': 0.0,
+                'total_provisions': 0.0,
         }
         
         
@@ -64,11 +71,95 @@ class HrPayroll(models.Model):
             return 30
         return 30
     
+    # -------------------------
+    #
+    #-------------------------
+    def _compute_benefits(self, total_gross, wage_earned, days_worked):
+        service_bonus = total_gross * (days_worked / 360)
+        severance = total_gross * (days_worked / 360)
+        interest_on_severance = severance * 0.12 * (days_worked / 360)
+        vacations = wage_earned *0.0417
+        return {
+            'service_bonus': service_bonus,
+            'severance': severance,
+            'interest_on_severance': interest_on_severance,
+            'vacations': vacations,
+        }
+        
+    def action_generate_lines_settlement(self):
+        """Genera automáticamente la linea de la liquidacion por cada empleado."""
+        self.ensure_one()
+
+        # ==========================
+        # Validaciones iniciales
+        # ==========================
+        
+        # Valida fechas
+        if not self.date_start or not self.date_end:
+            raise UserError("Debe definir las fechas de inicio y fin.")
+        
+        # Trae empleados con contrato activo
+        employees = self.env['hr.employee'].search([('contract_id', '!=', False)])
+        if not employees:
+            _logger.info("No hay empleados con contrato.")
+            self.line_ids = [(5, 0, 0)]
+            return        
+
+        # Filtra solo contratos con estado 'open'
+        employees = employees.filtered(lambda e: e.contract_id.state == 'open')
+        # Guardar IDs de empleados
+        employee_ids = employees.ids
+        
+        # ==========================
+        # ==========================
+        
+        
+        # ==========================
+        # Prefetch: traer todos los eventos del período para todos los empleados
+        # ==========================
+        
+        # Trae todos los eventos de nómina en el rango de fechas para los empleados seleccionados
+        events = self.env['hr.payroll.events'].search([
+            ('employee_id', 'in', employee_ids), 
+            ('date', '<=', self.date_end),
+            ('date_end', '>=', self.date_start), 
+        ])
+
+        # ==========================
+        # ==========================
+
+
+        # ==========================
+        # Agrupar eventos por empleado (dict: emp_id -> recordset)
+        # ==========================
+        
+        # Crea un diccionario para agrupar eventos por empleado segun su ID
+        events_by_emp = {}
+        for ev in events:
+            events_by_emp.setdefault(ev.employee_id.id, []).append(ev)
+            
+        # Crea un diccionario para posteriormente agregar las líneas de Nomina
+        lines = []
+        
+        # Hace un ciclo por cada empleado
+        for emp in employees:
+            contract = emp.contract_id
+            if not contract:
+                continue
+
+        # ==========================
+        # ==========================
+        
+        
+            # ==========================
+            # Inicializar totales y variables locales
+            # ==========================
 
     # -------------------------
     # Acción principal
     # -------------------------
     def action_generate_lines(self):
+        
         """Genera automáticamente una línea de nómina consolidada por empleado."""
         self.ensure_one()
 
@@ -200,7 +291,7 @@ class HrPayroll(models.Model):
             # Si usas un boolean en contrato para indicar si recibe auxilio:
             if contract.wage <= two_minimun_wage:
                 allow_value = (transportation_allowance/30)*days_worked
-
+                
             # ==========================
             # Cálculo de devengados y deducciones
             # ==========================
@@ -235,6 +326,19 @@ class HrPayroll(models.Model):
                 total_deductions_employee = health_contributions + pension_contributions
                 total_deductions = total_deductions_employee + arl_fee_value +company_health_contribution+ company_pension_contribution
 
+            benefits = self._compute_benefits(total_gross, wage_earned, days_worked)
+            totals['service_bonus'] = benefits['service_bonus']
+            totals['severance'] = benefits['severance']
+            totals['interest_on_severance'] = benefits['interest_on_severance']
+            totals['vacations'] = benefits['vacations']
+            totals['total_provisions'] = (
+                benefits['service_bonus'] +
+                benefits['severance'] +
+                benefits['interest_on_severance'] +
+                benefits['vacations']
+            )
+
+
             # ==========================
             # Construcción de la línea de nómina
             # ==========================
@@ -260,6 +364,12 @@ class HrPayroll(models.Model):
                 'total_deductions': total_deductions,
                 'net': total_gross - total_deductions,
                 'total_net': total_gross + total_deductions,
+                
+                'service_bonus': totals['service_bonus'],
+                'severance': totals['severance'],
+                'interest_on_severance': totals['interest_on_severance'],
+                'vacations': totals['vacations'],
+                'total_provisions': totals['total_provisions'],
             }
             lines.append((0, 0, vals_line))
 
@@ -274,8 +384,12 @@ class HrPayroll(models.Model):
         # ==========================
         self.line_ids = [(5, 0, 0)] + lines
 
+
     def action_generate_accounting_entries(self):
         """Placeholder: evita error de validación hasta implementar la lógica contable."""
         for record in self:
             # No hace nada por ahora, solo evita el error en la vista.
             pass 
+        
+        
+        #Copilot necesito rehacer el sistema de nomina actual porque se rompe con meses de 28 dias, se me ocurre hacerlo asi, como en gerencie.com dice que el año trabajado se mide sobre 360 dias fijos, puedo asignar eso a una variavble y luego calclular los meses

@@ -45,6 +45,6 @@
     </record>
 
     <!-- Menu Item -->
-    <menuitem name="Novedades" id="payroll.hr_payroll_events" parent="payroll.payroll" action='action_hr_payroll_events' />
+    <menuitem name="Novedades" id="payroll.hr_payroll_events" parent="payroll.payroll" action='action_hr_payroll_events' sequence='5'/>
 
 </odoo>

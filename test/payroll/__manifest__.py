@@ -22,6 +22,7 @@ Long description of module's purpose
         'views/hr_payroll_menu_views.xml',
         'views/hr_parameters_views.xml',
         'views/hr_payroll_events_views.xml',
+        'views/hr_payroll_settlement_views.xml',
         'views/hr_payroll_views.xml',
     ],
 }

@@ -73,5 +73,5 @@
 
     <!-- Menu -->
     <menuitem id="menu_hr_parameters" name="Parámetros Contabilidad"
-        parent="payroll.configuration" action="action_hr_parameters" />
+        parent="payroll.configuration" action="action_hr_parameters"/>
 </odoo>
