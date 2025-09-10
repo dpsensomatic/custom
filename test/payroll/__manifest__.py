@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 {
-    'name': "Nomina",
+    'name': "Nómina",
 
-    'summary': "Short (1 phrase/line) summary of the module's purpose",
+    'summary': "Gestión de Nómina Colombiana",
 
     'description': """
-Long description of module's purpose
+Este modulo crea la estructura para la gestion de la nomina ajustada a la legislación Colombiana.
     """,
 
     'author': "My Company",
@@ -25,4 +25,6 @@ Long description of module's purpose
         'views/hr_payroll_settlement_views.xml',
         'views/hr_payroll_views.xml',
     ],
+    'installable': True,
+    'application': True,
 }
