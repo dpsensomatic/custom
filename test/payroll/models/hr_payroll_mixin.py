@@ -7,28 +7,61 @@ class HrPayrollMixin(models.AbstractModel):
     # -----------------------------
     # Helper para obtener parámetros
     # -----------------------------
+from odoo import models, api, fields, _
+from odoo.exceptions import UserError
+
+class HrPayrollMixin(models.AbstractModel):
+    _name = "hr.payroll.mixin"
+    _description = "Funciones comunes para cálculos de nómina"
+
+    # -----------------------------
+    # Helper: obtener parámetros
+    # -----------------------------
     @api.model
     def _get_parameter(self, code):
-        """Busca un parámetro de nómina según su código."""
+        """Busca un parámetro de nómina según su código (en hr.parameters)."""
         param = self.env['hr.parameters'].search([('code', '=', code)], limit=1)
         if not param:
-            raise ValueError(f"Parámetro {code} no está definido en hr.parameters")
-        return param.value  # O param.amount según cómo lo tengas definido
-    
-    
+            raise UserError(_("El parámetro %s no está definido en hr.parameters") % code)
+        return float(param.value) if hasattr(param, "value") else float(param.amount)
+
+    # -----------------------------
+    # Eventos de nómina
+    # -----------------------------
+    @api.model
+    def _get_events(self, employee_id, date_start, date_end):
+        """Devuelve todos los eventos de un empleado en el rango de fechas."""
+        return self.env['hr.payroll.events'].search([
+            ('employee_id', '=', employee_id),
+            ('date_start', '<=', date_end),
+            ('date_end', '>=', date_start),
+        ])
+        
+    # -----------------------------
+    # Auxilio de transporte
+    # -----------------------------
     @api.model
     def compute_transport_allowance(self, wage):
-        """Auxilio de transporte según el SMMLV"""
-        min_wage = float(self._get_parameter("MIN_WAGE"))
-        allowance = float(self._get_parameter("TRANSPORT_ALLOWANCE"))
-        return allowance if wage <= (2 * min_wage) else 0
-    
-    
+        """Calcula auxilio de transporte según el SMMLV."""
+        min_wage = self._get_parameter("MIN_WAGE")
+        allowance = self._get_parameter("TRANSPORT_ALLOWANCE")
+        return allowance if wage <= (2 * min_wage) else 0.0
+
     @api.model
-    def _expected_worked_days(self, start_date, end_date):
-        """Calcula los días esperados entre dos fechas"""
-        delta = (end_date - start_date).days + 1
-        return max(delta, 0)
+    def compute_worked_days(self, employee_id, date_start, date_end):
+        """Calcula días trabajados en un período descontando ausencias."""
+        total_days = (fields.Date.from_string(date_end) - fields.Date.from_string(date_start)).days + 1
+        events = self._get_events(employee_id, date_start, date_end)
+
+        absent_days = 0
+        for ev in events:
+            # Calcula la intersección entre el evento y el rango
+            ev_start = max(fields.Date.from_string(ev.date_start), fields.Date.from_string(date_start))
+            ev_end = min(fields.Date.from_string(ev.date_end), fields.Date.from_string(date_end))
+            delta = (ev_end - ev_start).days + 1
+            absent_days += delta if delta > 0 else 0
+
+        return max(0, total_days - absent_days)
 
     
     @api.model
@@ -63,4 +96,3 @@ class HrPayrollMixin(models.AbstractModel):
     def compute_total_gross(self, wage, transport_allowance, events):
         """Calcula el total bruto"""
         return wage + transport_allowance + events
-        
