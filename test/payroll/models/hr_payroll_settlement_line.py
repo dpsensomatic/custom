@@ -12,4 +12,13 @@ class HrPayrollSettlementLine(models.Model):
     )
 
     name = fields.Char(string="Concepto")
+
+    # Campos de liquidación
+    service_bonus = fields.Float(string="Prima de Servicios")
+    severance = fields.Float(string="Cesantías")
+    interest_on_severance = fields.Float(string="Intereses sobre Cesantías")
+    vacations = fields.Float(string="Vacaciones")
+    total_provisions = fields.Float(string="Total Provisiones")
+
+    # Campo genérico por si quieres manejar valores adicionales
     amount = fields.Float(string="Valor")

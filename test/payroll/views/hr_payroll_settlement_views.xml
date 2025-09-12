@@ -14,7 +14,7 @@
         <field name="arch" type="xml">
             <form string="Liquidación de Nómina">
                 <header>
-                    <button name="action_generate_lines_settlement" type="object"
+                    <button name="action_generate_settlement_lines" type="object"
                         string="Generar Liquidación" class="btn-primary oe_highlight" />
                 </header>
                 <sheet>
