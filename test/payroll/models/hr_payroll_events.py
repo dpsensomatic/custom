@@ -17,7 +17,7 @@ class HrPayrollEvents(models.Model):
     # Campos del modelo
     # ==========================
     employee_id = fields.Many2one('hr.employee', string="Empleado", required=True)
-    contract_id = fields.Many2one("hr.contract", string="Contrato", compute ='_compute_employee_contract')
+    contract_id = fields.Many2one("hr.contract", string="Contrato", compute ='_compute_field_contract')
     type = fields.Selection([
         ('commissions', 'Comisiones'),
         ('day_ot_25', 'Hora Extra Diurna 25%'),
@@ -33,7 +33,7 @@ class HrPayrollEvents(models.Model):
         ('unpaid_leave', 'Permiso No Remunerado'),
     ], string='Tipo de Novedad')
     date = fields.Date(string='Fecha de la Novedad')
-    date_end = fields.Date(string="Fecha fin", compute="_compute_date_end", store=True)
+    date_end = fields.Date(string="Fecha fin", compute="_compute_field_date_end", store=True)
     quantity = fields.Integer(string='Cantidad de dias de la novedad')
     unit = fields.Selection([
         ('day', 'Día'),
