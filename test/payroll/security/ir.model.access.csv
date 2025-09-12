@@ -5,8 +5,10 @@ access_hr_payroll_events,hr.payroll_events,model_hr_payroll_events,base.group_us
 access_hr_parameters,hr.parameters,model_hr_parameters,base.group_user,1,1,1,1
 access_hr_accrued,hr.accrued,model_hr_accrued,base.group_user,1,1,1,1
 access_hr_payroll_settlement,hr.payroll_settlement,model_hr_payroll_settlement,base.group_user,1,1,1,1
-
 access_hr_payroll_settlement_line,hr.payroll_settlement_line,model_hr_payroll_settlement_line,base.group_user,1,1,1,1
+access_hr_payroll_mixin,hr.payroll_mixin,model_hr_payroll_mixin,base.group_user,1,1,1,1
+
+
 
 
 

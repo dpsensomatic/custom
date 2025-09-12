@@ -46,7 +46,7 @@ class HrPayrollEvents(models.Model):
     # Calculo del campo contract_id
     # ==========================
     @api.depends('employee_id')
-    def _compute_employee_contract(self):
+    def _compute_field_contract(self):
         # Método que asigna el contrato del empleado al campo contract_id
         for record in self:
             if record.employee_id and record.employee_id.contract_id:
@@ -59,7 +59,7 @@ class HrPayrollEvents(models.Model):
     # Cálculo del campo date_end
     # ==========================
     @api.depends("date", "quantity")
-    def _compute_date_end(self):
+    def _compute_field_date_end(self):
         # El campo date_end se calcula automáticamente sumando la cantidad de días (quantity) a la fecha de inicio (date).
         for record in self:
             if record.date and record.quantity:
@@ -117,8 +117,6 @@ class HrPayrollEvents(models.Model):
             overlap_end = min(event_end, payroll_end)
             if overlap_start and overlap_end and overlap_start <= overlap_end:
                 effective_days = (overlap_end - overlap_start).days + 1
-            else:
-                effective_days = 0  # No se cruza con la nómina
 
         # === Diccionario base ===
         result = {"extra_hours": 0.0, "deductions": 0.0, 'sick': 0.0,
