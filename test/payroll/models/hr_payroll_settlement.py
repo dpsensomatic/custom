@@ -46,23 +46,33 @@ class HrPayrollSettlement(models.Model):
 
     @api.depends("contract_start_date", "settlement_cutoff_date", "absences_days")
     def _compute_days(self):
+        def diff_360(start_date, end_date):
+            """Calcula la diferencia en días usando calendario laboral (360 días/año)."""
+            if not start_date or not end_date:
+                return 0
+            d1, m1, y1 = start_date.day, start_date.month, start_date.year
+            d2, m2, y2 = end_date.day, end_date.month, end_date.year
+            # Ajuste según regla 30/360
+            if d1 == 31:
+                d1 = 30
+            if d2 == 31 and d1 == 30:
+                d2 = 30
+            return (y2 - y1) * 360 + (m2 - m1) * 30 + (d2 - d1) + 1
         for record in self:
             if record.contract_start_date and record.settlement_cutoff_date:
-                total_days = (record.settlement_cutoff_date - record.contract_start_date).days + 1
-
+                # Diferencia en "meses de 30 días"
+                total_days = diff_360(record.contract_start_date, record.settlement_cutoff_date)
                 # Aplica tope de 360 días
                 days_in_contract = min(total_days, 360)
-
                 # Días liquidados descontando ausencias
                 days_liquidated = max(0, days_in_contract - record.absences_days)
-
-                # Asignar resultados
                 record.days_in_contract = days_in_contract
                 record.days_liquidated = days_liquidated
             else:
                 record.days_in_contract = 0
                 record.days_liquidated = 0
-                
+
     def action_generate_settlement_lines(self):
-        """Genera automáticamente las líneas de liquidación para el empleado."""
-        print("Generando líneas de liquidación...")
+        days_liquidated = self.days_liquidated
+        days_in_contract = self.days_in_contract
+        

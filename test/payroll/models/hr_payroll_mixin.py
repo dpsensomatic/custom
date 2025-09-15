@@ -31,7 +31,7 @@ class HrPayrollMixin(models.AbstractModel):
             ], limit=1)
     
             if not contract:
-                raise UserError("El empleado {emp.name} no tiene contrato activo en el rango {date_start} - {date_end}")
+                raise UserError(f"El empleado {emp.name} no tiene contrato activo en el rango {date_start} - {date_end}")
     
             result[emp] = contract
     
@@ -84,32 +84,75 @@ class HrPayrollMixin(models.AbstractModel):
     # -----------------------------
     # Días esperados en el período
     # -----------------------------
-    @api.model
-    def _expected_workdays(self, date_start, date_end):
-        """Devuelve el número de días del período bajo la convención 30/360."""
-        if not date_start or not date_end:
-            return 30
+    # @api.model
+    # def _expected_workdays(self, date_start, date_end):
+    #     """Devuelve el número de días del período bajo la convención 30/360."""
+    #     if not date_start or not date_end:
+    #         return 30
     
-        d1 = fields.Date.from_string(date_start)
-        d2 = fields.Date.from_string(date_end)
+    #     d1 = fields.Date.from_string(date_start)
+    #     d2 = fields.Date.from_string(date_end)
     
-        # Normalizar usando regla de 30/360
-        start_day = min(d1.day, 30)
-        end_day = min(d2.day, 30)
+    #     # Normalizar usando regla de 30/360
+    #     start_day = min(d1.day, 30)
+    #     end_day = min(d2.day, 30)
     
-        months = (d2.year - d1.year) * 12 + (d2.month - d1.month)
-        days = (end_day - start_day) + (months * 30) + 1
+    #     months = (d2.year - d1.year) * 12 + (d2.month - d1.month)
+    #     days = (end_day - start_day) + (months * 30) + 1
     
-        return days
+    #     return days
     
-    # -----------------------------
-
-    # -----------------------------
-    # Eventos de nómina
-    # -----------------------------
     # -----------------------------
     # Dias trabajados
     # -----------------------------
+    # @api.model
+    # def _compute_days_worked(self, events, totals, date_start, date_end):
+    #     unpaid_days = 0
+    #     for ev in events:
+    #         vals = ev._compute_value(date_start, date_end) or {}
+    #         for k, v in vals.items():
+    #             try:
+    #                 totals[k] = totals.get(k, 0.0) + float(v or 0.0)
+    #             except Exception:
+    #                 pass
+                
+    #         if ev.type in ['sick_leave', 'arl_leave', 'unpaid_leave']:
+    #             event_start = ev.date
+    #             event_end = ev.date + timedelta(days=(ev.quantity or 0) - 1)
+    #             overlap_start = max(event_start, date_start)
+    #             overlap_end = min(event_end, date_end)
+    #             if overlap_start <= overlap_end:
+    #                 days_in_period = (overlap_end - overlap_start).days + 1
+    #                 unpaid_days += days_in_period  # ahora sí existe
+    
+    #     return unpaid_days
+    # -----------------------------
+        
+    # -----------------------------
+    @api.model
+    def _diff_360(self, start_date, end_date):
+        """Calcula la diferencia en días usando calendario laboral (360 días/año)."""
+        if not start_date or not end_date:
+            return 0
+
+        d1 = fields.Date.from_string(start_date)
+        d2 = fields.Date.from_string(end_date)
+
+        d1_day, d1_month, d1_year = d1.day, d1.month, d1.year
+        d2_day, d2_month, d2_year = d2.day, d2.month, d2.year
+
+        # Ajuste según regla 30/360
+        if d1_day == 31:
+            d1_day = 30
+        if d2_day == 31 and d1_day == 30:
+            d2_day = 30
+
+        return (d2_year - d1_year) * 360 + (d2_month - d1_month) * 30 + (d2_day - d1_day) + 1
+    @api.model
+    def _expected_workdays(self, date_start, date_end):
+        """Devuelve el número de días del período bajo la convención 30/360."""
+        return self._diff_360(date_start, date_end)
+
     @api.model
     def _compute_days_worked(self, events, totals, date_start, date_end):
         unpaid_days = 0
@@ -120,20 +163,37 @@ class HrPayrollMixin(models.AbstractModel):
                     totals[k] = totals.get(k, 0.0) + float(v or 0.0)
                 except Exception:
                     pass
-                
+
             if ev.type in ['sick_leave', 'arl_leave', 'unpaid_leave']:
-                event_start = ev.date
-                event_end = ev.date + timedelta(days=(ev.quantity or 0) - 1)
-                overlap_start = max(event_start, date_start)
-                overlap_end = min(event_end, date_end)
+                event_start = fields.Date.from_string(ev.date)
+                event_end = event_start + timedelta(days=(ev.quantity or 0) - 1)
+
+                overlap_start = max(event_start, fields.Date.from_string(date_start))
+                overlap_end = min(event_end, fields.Date.from_string(date_end))
+
                 if overlap_start <= overlap_end:
-                    days_in_period = (overlap_end - overlap_start).days + 1
-                    unpaid_days += days_in_period  # ahora sí existe
+                    days_in_period = self._diff_360(overlap_start, overlap_end)
+                    unpaid_days += days_in_period
+
+        return unpaid_days    
     
-        return unpaid_days
-            
-    # -----------------------------
-        
+    
+    @api.model
+    def compute_worked_days(self, employee_id, date_start, date_end):
+        """Calcula días trabajados en un período descontando ausencias bajo 30/360."""
+        total_days = self._diff_360(date_start, date_end)
+        events = self._get_events(employee_id, date_start, date_end)
+
+        absent_days = 0
+        for ev in events:
+            ev_start = max(fields.Date.from_string(ev.date_start), fields.Date.from_string(date_start))
+            ev_end = min(fields.Date.from_string(ev.date_end), fields.Date.from_string(date_end))
+
+            if ev_start <= ev_end:
+                absent_days += self._diff_360(ev_start, ev_end)
+
+        return max(0, total_days - absent_days)    
+
     # -----------------------------
     # Auxilio de transporte
     # -----------------------------
