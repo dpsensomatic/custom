@@ -9,7 +9,7 @@ class SaleOrderLine(models.Model):
         order = self.order_id
         partner = order.partner_shipping_id or order.partner_id
         regime = partner.x_tax_regime_id
-        if not regime:
+        if regime:
             return
         add_taxes = regime.tax_ids.filtered(
             lambda t: t.company_id == order.company_id and t.type_tax_use in ("sale", "none")

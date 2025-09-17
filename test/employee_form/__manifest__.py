@@ -27,5 +27,7 @@ No se jeje
         'views/employee_form.xml',
         'views/contract_form.xml',
     ],
+    'installable': True,
+    'application': True,
 }
 

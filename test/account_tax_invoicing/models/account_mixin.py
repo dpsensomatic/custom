@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from odoo import models, api
 
 class AccountMoveLine(models.Model):
@@ -10,16 +11,16 @@ class AccountMoveLine(models.Model):
             return
 
         partner = move.partner_id
-        base = self.price_unit * self.quantity
+        base = (self.price_unit or 0.0) * (self.quantity or 0.0)
 
-        # === 1. impuestos por producto ===
+        # 1) impuestos del producto. Filtramos por base mínima si existe
         product_taxes = self.product_id.taxes_id.filtered(
             lambda t: not t.minimum_base_amount or base >= t.minimum_base_amount
         )
 
-        # === 2. impuestos por régimen del partner ===
-        regime = partner.x_tax_regime_id
+        # 2) impuestos del régimen del partner (si tienes tax_regime)
         regime_taxes = self.env["account.tax"]
+        regime = partner.x_tax_regime_id if partner else None
         if regime:
             scope = "sale" if move.is_sale_document(include_receipts=True) else "purchase"
             regime_taxes = regime.tax_ids.filtered(
@@ -28,13 +29,12 @@ class AccountMoveLine(models.Model):
                 and (not t.minimum_base_amount or base >= t.minimum_base_amount)
             )
 
-        # === 3. combinación ===
+        # 3) combinación y mapeo por fpos
         all_taxes = product_taxes | regime_taxes
 
-        # === 4. aplicar fiscal position ===
-        fpos = move.fiscal_position_id or partner.property_account_position_id
+        fpos = move.fiscal_position_id or (partner.property_account_position_id if partner else None)
         if fpos:
             all_taxes = fpos.map_tax(all_taxes)
 
-        # === 5. asignar ===
+        # 4) asignar impuestos a la línea
         self.tax_ids = all_taxes
