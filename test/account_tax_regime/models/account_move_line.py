@@ -1,5 +1,6 @@
 from odoo import models, api
 import logging
+import ipdb
 
 _logger = logging.getLogger(__name__)
 
@@ -40,6 +41,10 @@ class AccountMoveLine(models.Model):
             taxes_mapped.mapped("name"),
             taxes_to_apply.mapped("name"),
         )
-
         # 4) Asignar impuestos finales a la línea
         self.tax_ids = taxes_to_apply
+
+# onchange tax_base_amount de self.move_id
+# base_minima > subtotal
+# 
+# rteIVA
