@@ -1,1 +1,189 @@
-<!--  -->
+<page id="invoice_tab" name="invoice_tab" string="Líneas de factura"
+    invisible="move_type == 'entry'">
+    <field name="invoice_line_ids" widget="product_label_section_and_note_field_o2m"
+        mode="list,kanban"
+        context="{                                            'default_move_type': context.get('default_move_type'),                                            'journal_id': journal_id,                                            'default_partner_id': commercial_partner_id,                                            'default_currency_id': currency_id or company_currency_id,                                            'default_display_type': 'product',                                            'quick_encoding_vals': quick_encoding_vals,                                        }"
+        readonly="state != 'draft'" on_change="1">
+        <list editable="bottom" string="Apuntes contables" default_order="sequence, id">
+            <control>
+                <create name="add_line_control" string="Agregar una línea" />
+                <create name="add_section_control" string="Agregar sección"
+                    context="{'default_display_type': 'line_section'}" />
+                <create name="add_note_control" string="Agregar nota"
+                    context="{'default_display_type': 'line_note'}" />
+                <button name="action_add_from_catalog" string="Catálogo" type="object"
+                    class="btn-link" context="{'order_id': parent.id}" />
+            </control>
+
+            <!-- Displayed fields -->
+            <field name="sequence" widget="handle" />
+            <field name="product_id" optional="show" widget="product_label_section_and_note_field"
+                domain="                                                     context.get('default_move_type') in ('out_invoice', 'out_refund', 'out_receipt')                                                     and [('sale_ok', '=', True)]                                                     or [('purchase_ok', '=', True)]                                                "
+                readonly="is_downpayment" on_change="1" can_create="True" can_write="True" />
+            <field name="name" widget="section_and_note_text" optional="show" />
+            <field name="account_id"
+                context="{'partner_id': partner_id, 'move_type': parent.move_type}"
+                options="{'no_quick_create': True}"
+                domain="[('deprecated', '=', False), ('company_ids', 'parent_of', company_id), ('account_type', 'not in', ('asset_receivable', 'liability_payable', 'off_balance'))]"
+                required="display_type not in ('line_note', 'line_section')" on_change="1"
+                can_create="True" can_write="True" />
+            <field name="analytic_distribution" widget="analytic_distribution" string="Analítica"
+                optional="show"
+                options="{'product_field': 'product_id', 'account_field': 'account_id', 'amount_field': 'price_subtotal'}"
+                business_domain_compute="parent.move_type in ['out_invoice', 'out_refund', 'out_receipt'] and 'invoice' or parent.move_type in ['in_invoice', 'in_refund', 'in_receipt'] and 'bill' or 'general'" />
+            <field name="quantity" optional="show" on_change="1" />
+            <field name="product_uom_category_id" column_invisible="True" />
+            <field name="product_uom_id" string="UdM" optional="show" width="92px" on_change="1"
+                can_create="True" can_write="True" />
+            <!-- /l10n_in_edi.test_edi_json -->
+            <!-- required for @api.onchange('product_id') -->
+            <field name="product_uom_id" column_invisible="True" on_change="1" can_create="True"
+                can_write="True" />
+            <field name="price_unit" string="Precio" on_change="1" />
+            <field name="discount" width="50px" string="Desc.%" optional="hide" on_change="1" />
+            <field name="tax_ids" widget="many2many_tax_tags"
+                domain="[('type_tax_use', '=?', parent.invoice_filter_type_domain), ('company_id', 'parent_of', parent.company_id), ('country_id', '=', parent.tax_country_id)]"
+                context="{'append_type_to_tax_name': not parent.invoice_filter_type_domain, 'active_test': True}"
+                options="{'no_create': True}" optional="show" on_change="1" can_create="True"
+                can_write="True" />
+            <field name="price_subtotal"
+                column_invisible="parent.move_type not in ['in_invoice', 'in_refund', 'in_receipt'] and parent.company_price_include == 'tax_included'"
+                string="Importe" on_change="1" />
+            <field name="price_total"
+                column_invisible="parent.move_type in ['in_invoice', 'in_refund', 'in_receipt'] or parent.company_price_include == 'tax_excluded'"
+                string="Importe" on_change="1" />
+            <!-- Others fields -->
+            <field name="partner_id" column_invisible="True" on_change="1" can_create="True"
+                can_write="True" />
+            <field name="currency_id" column_invisible="True" on_change="1" can_create="True"
+                can_write="True" />
+            <field name="company_id" column_invisible="True" on_change="1" />
+            <field name="purchase_line_id" column_invisible="True" on_change="1" can_create="True"
+                can_write="True" />
+            <field name="purchase_order_id" column_invisible="parent.move_type != 'in_invoice'"
+                optional="hide" />
+            <field name="company_currency_id" column_invisible="True" />
+            <field name="display_type" force_save="1" column_invisible="True" on_change="1" />
+            <field name="is_downpayment" column_invisible="1" />
+        </list>
+        <kanban class="o_kanban_mobile">
+            <!-- Displayed fields -->
+            <templates>
+                <t t-name="card">
+                    <div
+                        t-attf-class="ps-0 pe-0 {{ record.display_type.raw_value ? 'o_is_' + record.display_type.raw_value : '' }}">
+                        <t
+                            t-if="!['line_note', 'line_section'].includes(record.display_type.raw_value)">
+                            <div class="row g-0">
+                                <div class="col-2 pe-3">
+                                    <field name="product_id" widget="image"
+                                        options="{'preview_image': 'image_128'}" class="w-100"
+                                        on_change="1" />
+                                </div>
+                                <div class="col-10">
+                                    <div class="row">
+                                        <div class="col">
+                                            <field class="fw-bold" name="product_id" on_change="1" />
+                                        </div>
+                                        <div class="col-auto fw-bold float-end text-end">
+                                            <field name="price_subtotal"
+                                                t-if="['in_invoice', 'in_refund', 'in_receipt'].includes(record.move_type.raw_value)"
+                                                string="Importe" on_change="1" />
+                                            <field name="price_total"
+                                                t-if="!['in_invoice', 'in_refund', 'in_receipt'].includes(record.move_type.raw_value)"
+                                                string="Importe" on_change="1" />
+                                        </div>
+                                    </div>
+                                    <div class="text-muted"> Cantidad: <field name="quantity"
+                                            on_change="1" />
+                                                                    <field name="product_uom_id"
+                                            on_change="1" />
+                                    </div>
+                                    <div class="text-muted"> Precio unitario: <field
+                                            name="price_unit" on_change="1" />
+                                    </div>
+                                </div>
+                            </div>
+                        </t>
+                        <t
+                            t-if="record.display_type.raw_value === 'line_section' || record.display_type.raw_value === 'line_note'">
+                            <field name="name" />
+                        </t>
+                    </div>
+                </t>
+            </templates>
+
+            <!-- Others fields -->
+            <field name="tax_calculation_rounding_method" />
+            <field name="currency_id" on_change="1" />
+            <field name="company_currency_id" />
+            <field name="display_type" force_save="1" on_change="1" />
+            <field name="move_type" />
+        </kanban>
+
+        <!-- Form view to cover mobile use -->
+        <form>
+            <sheet>
+                <field name="tax_calculation_rounding_method" invisible="1" />
+                <field name="display_type" invisible="1" on_change="1" />
+                <field name="company_id" invisible="1" on_change="1" />
+                <field name="partner_id" invisible="1" on_change="1" can_create="True"
+                    can_write="True" />
+                <group>
+                    <field name="product_id" widget="many2one_barcode" on_change="1"
+                        can_create="True" can_write="True" />
+                    <label for="name" string="Descripción"
+                        invisible="display_type in ('line_note', 'line_section')" />
+                    <label for="name" string="Sección" invisible="display_type != 'line_section'" />
+                    <label for="name" string="Nota" invisible="display_type != 'line_note'" />
+                    <field name="name" widget="text" nolabel="1" />
+                    <field name="quantity" on_change="1" />
+                    <field name="product_uom_category_id" invisible="1" />
+                    <field name="product_uom_id" on_change="1" can_create="True" can_write="True" />
+                    <field name="price_unit" on_change="1" />
+                    <field name="discount" string="Desc.%" on_change="1" />
+                </group>
+                <group>
+                    <field name="account_id"
+                        domain="[('deprecated', '=', False), ('company_ids', 'parent_of', company_id)]"
+                        options="{'no_create': True}"
+                        context="{'partner_id': partner_id, 'move_type': parent.move_type}"
+                        on_change="1" can_create="True" can_write="True" />
+                    <field name="tax_ids" widget="many2many_tags" on_change="1" can_create="True"
+                        can_write="True" />
+                    <field name="analytic_distribution" widget="analytic_distribution" />
+                </group>
+                <group>
+                    <field name="price_subtotal"
+                        invisible="parent.move_type not in ['in_invoice', 'in_refund', 'in_receipt'] and parent.company_price_include == 'tax_included'"
+                        string="Importe" on_change="1" />
+                    <field name="price_total"
+                        invisible="parent.move_type in ['in_invoice', 'in_refund', 'in_receipt'] or parent.company_price_include == 'tax_excluded'"
+                        string="Importe" on_change="1" />
+                </group>
+            </sheet>
+        </form>
+    </field>
+    <group col="12" class="oe_invoice_lines_tab overflow-hidden">
+        <group colspan="8">
+            <field name="narration" placeholder="Términos y condiciones" nolabel="1" />
+        </group>
+        <!-- Totals (only invoices / receipts) -->
+        <group colspan="4">
+            <group class="oe_subtotal_footer"
+                invisible="move_type not in ('out_invoice', 'out_refund', 'in_invoice', 'in_refund', 'out_receipt', 'in_receipt') or payment_state == 'invoicing_legacy'">
+
+                <field name="tax_totals" widget="account-tax-totals-field" nolabel="1" colspan="2"
+                    readonly="state != 'draft' or (move_type not in ('in_invoice', 'in_refund', 'in_receipt') and not quick_edit_mode)"
+                    on_change="1" />
+
+                <field name="invoice_payments_widget" colspan="2" nolabel="1" widget="payment" />
+                <field name="amount_residual" class="oe_subtotal_footer_separator"
+                    invisible="state == 'draft'" on_change="1" />
+            </group>
+            <field name="invoice_outstanding_credits_debits_widget"
+                class="oe_invoice_outstanding_credits_debits py-3" colspan="2" nolabel="1"
+                widget="payment" invisible="state != 'posted' or not invoice_has_outstanding" />
+        </group>
+    </group>
+</page>

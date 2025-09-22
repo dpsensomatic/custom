@@ -21,16 +21,10 @@
     
     'data': [
         'security/ir.model.access.csv',
-        # 'views/account_account_views.xml',
-        # 'views/account_move_line_views.xml',
         # 'views/account_move_views.xml',
         'views/account_tax_views.xml',
-        # 'views/accounting_menu.xml',
-        # 'views/product_template.xml',
-        # 'views/res_partner_views.xml',
-        # 'views/tax_regime_views.xml',
     ], 
-
+    'license': 'LGPL-3',
+    'installable': True,
     'application': True,
-    'installable': True, 
 }
