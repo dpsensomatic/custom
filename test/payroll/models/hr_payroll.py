@@ -90,12 +90,14 @@ class HrPayroll(models.Model):
             arl_fee = parameters['arl_fee']
     
             # Días esperados (30/360) y no trabajados
-            expected = self.env['hr.payroll.mixin']._expected_workdays(self.date_start, self.date_end)
+            expected = 30
             totals = self._empty_totals()
-            unpaid_days = self.env['hr.payroll.mixin']._compute_days_worked(events, totals, self.date_start, self.date_end)
-    
-            # Días trabajados (ajustados a 30/360)
-            days_worked = max(0, expected - unpaid_days)
+            days_worked = self.env['hr.payroll.mixin']._compute_days_worked(events, totals,  self.date_start, self.date_end)
+
+            
+
+                
+
 
     
             # Salario devengado proporcional
@@ -104,7 +106,6 @@ class HrPayroll(models.Model):
             allow_value = self.env['hr.payroll.mixin']._compute_transport_allowance(
                 wage_earned, days_worked, minimun_wage, transportation_allowance
             )
-
             
 
     
@@ -184,8 +185,8 @@ class HrPayroll(models.Model):
             }
             lines.append((0, 0, vals_line))
     
-            _logger.info("Payroll: emp=%s expected=%s unpaid_days=%s days_worked=%s totals=%s",
-                         employee.name, expected, unpaid_days, days_worked, totals)
+            _logger.info("Payroll: emp=%s expected=%s days_worked=%s totals=%s",
+                         employee.name, expected,  days_worked, totals)
     
         self.line_ids = [(5, 0, 0)] + lines
 

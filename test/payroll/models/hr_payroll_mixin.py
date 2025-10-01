@@ -81,76 +81,55 @@ class HrPayrollMixin(models.AbstractModel):
             ('date_end', '>=', date_start),
         ])
         
-
-    #
-    # Falta por entender
-    #
-    @api.model
-    def _diff_360(self, start_date, end_date):
-        """Calcula la diferencia en días usando calendario laboral (360 días/año)."""
-        if not start_date or not end_date:
-            return 0
-
-        d1 = fields.Date.from_string(start_date)
-        d2 = fields.Date.from_string(end_date)
-
-        d1_day, d1_month, d1_year = d1.day, d1.month, d1.year
-        d2_day, d2_month, d2_year = d2.day, d2.month, d2.year
-
-
-        # Ajuste según regla 30/360
-        if d1_day == 31:
-            d1_day = 30
-        if d2_day == 31 and d1_day == 30:
-            d2_day = 30
-        return (d2_year - d1_year) * 360 + (d2_month - d1_month) * 30 + (d2_day - d1_day) + 1
-
-    #
-    # Llama a diferentes funciones dependiendo de la duracion del tiempo otorgado
-    #
-    @api.model
-    def _expected_workdays(self, date_start, date_end):
-        """
-        Devuelve el número de días del período bajo la convención 30/360.
-        Si el rango cubre un mes completo → siempre 30.
-        """
-        if self._is_full_month(date_start, date_end):
-            
-            return 30
-        
-        return self._diff_360(date_start, date_end)
-
     @api.model
     def _compute_days_worked(self, events, totals, date_start, date_end):
-        unpaid_days = 0
+        if not events.employee_id.name:
+            days_worked = 30
+            return days_worked
         
         for ev in events:
-            vals = ev._compute_value(date_start, date_end) or {}
-            
-            for k, v in vals.items():
-                
-                try:
-                    totals[k] = totals.get(k, 0.0) + float(v or 0.0)
+            d1 = fields.Date.from_string(date_start)
+            d2 = fields.Date.from_string(date_end)
+            e1 = fields.Date.from_string(ev.date)
+            e2 = fields.Date.from_string(ev.date_end)
+            if ev.type == "sick_leave":
+                if d1.month == e1.month or d1.month == e2.month:
+
+
+                    overlap_start = max(ev.date, date_start)
+                    overlap_end = min(ev.date_end, date_end)
+
+
+                    o1 = fields.Date.from_string(overlap_start)
+                    o2 = fields.Date.from_string(overlap_end)
                     
-                except Exception:
-                    pass
+                    unpaid_days = o2.day - o1.day + 1
+                    
+                    if d1.month == 2 and unpaid_days > 15:
+                        unpaid_days = o2.day - o1.day + 1
+                        days_worked = 28 - unpaid_days
+                    
+                    elif d2.day == 31 and unpaid_days > 15:
 
-            if ev.type in ['sick_leave', 'arl_leave', 'unpaid_leave']:
-                
-                event_start = fields.Date.from_string(ev.date)
-                event_end = event_start + timedelta(days=(ev.quantity or 0) - 1)
+                        days_worked = 31 - unpaid_days
+                    else:
+                        days_worked = 30 - unpaid_days
 
-                overlap_start = max(event_start, fields.Date.from_string(date_start))
-                overlap_end = min(event_end, fields.Date.from_string(date_end))
 
-                if overlap_start <= overlap_end:
-                    if self._is_full_month(overlap_start, overlap_end):
-                        unpaid_days = 30
-                        return  unpaid_days
-                    days_in_period = self._diff_360(overlap_start, overlap_end)
-                    unpaid_days += days_in_period
-        return unpaid_days    
-    
+                    vals = ev._compute_value(days_worked) or {}
+
+                    for k, v in vals.items():
+
+                        try:
+                            totals[k] = totals.get(k, 0.0) + float(v or 0.0)
+
+                        except Exception:
+                            pass
+        return days_worked 
+        
+
+
+ 
     
     # -----------------------------
     # Auxilio de transporte
