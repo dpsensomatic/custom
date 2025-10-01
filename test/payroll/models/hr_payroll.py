@@ -96,13 +96,17 @@ class HrPayroll(models.Model):
     
             # Días trabajados (ajustados a 30/360)
             days_worked = max(0, expected - unpaid_days)
+
     
             # Salario devengado proporcional
             wage_earned = (contract.wage * (days_worked / expected)) if expected else 0.0
-    
+
             allow_value = self.env['hr.payroll.mixin']._compute_transport_allowance(
                 wage_earned, days_worked, minimun_wage, transportation_allowance
             )
+
+            
+
     
             total_gross = (
                 wage_earned +
@@ -115,7 +119,9 @@ class HrPayroll(models.Model):
                 allow_value
             )
     
+
             benefits = self.env['hr.payroll.mixin']._compute_benefits(total_gross, wage_earned, days_worked)
+
             contributions = self.env['hr.payroll.mixin']._compute_contributions(
                 arl_fee,
                 company_health_percentage,
@@ -127,6 +133,7 @@ class HrPayroll(models.Model):
                 allow_value
             )
     
+
             health_contributions = contributions['employee_eps']
             pension_contributions = contributions['employee_pension']
             company_health_contribution = contributions['company_eps']

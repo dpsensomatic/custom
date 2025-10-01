@@ -4,9 +4,9 @@
     <field name="model">account.move</field>
     <field name="inherit_id" ref="account.view_move_form"/> 
     <field name="arch" type="xml">
-
-
-      
+      <xpath expr='//field[@name="invoice_user_id"]' position="after">
+        <field name='invoice_level_tax_ids'/>
+      </xpath>
     </field>
   </record>
 </odoo>

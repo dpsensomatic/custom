@@ -90,7 +90,7 @@ class HrPayrollEvents(models.Model):
                 'gross': 0.0,
                 'net':0.0,
                 }
-
+            
         # ==========================
         # Variables base para cálculos
         # ==========================
@@ -115,13 +115,23 @@ class HrPayrollEvents(models.Model):
         if payroll_start and payroll_end:
             overlap_start = max(event_start, payroll_start)
             overlap_end = min(event_end, payroll_end)
-            if overlap_start and overlap_end and overlap_start <= overlap_end:
+            if self.env["hr.payroll.mixin"]._is_full_month(overlap_start, overlap_end):
+                effective_days = 30
+                #si entro
+            else:
                 effective_days = (overlap_end - overlap_start).days + 1
-
+                #no entro
+        p1 = fields.Date.from_string(payroll_start)
+        p2 = fields.Date.from_string(payroll_end)
+        e1 = fields.Date.from_string(overlap_start)
+        e2 = fields.Date.from_string(overlap_end)
+        contable_days = (p1.day + p2.day) - (e1.day + e2.day)  
+        month_days = 30
+        month_days -= contable_days
+        ipdb.set_trace()
         # === Diccionario base ===
         result = {"extra_hours": 0.0, "deductions": 0.0, 'sick': 0.0,
                   "arl": 0.0, 'comissions': 0.0, 'night_surcharge': 0.0, 'other': 0.0}
-
         # === Cálculos según tipo de novedad ===
         if self.type == "day_overtime":
             result["extra_hours"] = effective_days * hour_wage * 1.25
@@ -132,42 +142,26 @@ class HrPayrollEvents(models.Model):
         elif self.type == "sunday_overtime":
             result["extra_hours"] = effective_days * hour_wage * 2.0
         elif self.type == "sick_leave":
-            # --- Calcular rango ---
-            event_start = self.date
-            event_end = self.date_end
-            overlap_start = max(event_start, payroll_start) if payroll_start else event_start
-            overlap_end = min(event_end, payroll_end) if payroll_end else event_end
-
-            if not (overlap_start and overlap_end and overlap_start <= overlap_end):
-                result["sick"] = 0.0
-                return result
-
-            # --- Días efectivos en este período ---
-            effective_days = (overlap_end - overlap_start).days + 1
-            
-            effective_days = min(effective_days, 30)
-
             # --- Calcular offset: cuántos días pasaron antes del inicio de la nómina ---
-            days_before_period = (overlap_start - event_start).days
+            # days_before_period = (overlap_start - event_start).days
 
             total_payment = 0
-            for i in range(effective_days):
-                dia_global = days_before_period + i + 1  # el día "real" dentro de la incapacidad
-
+            for i in range(month_days):
+                # dia_global = days_before_period + i + 1  # el día "real" dentro de la incapacidad
                 if day_wage_66 > minimum_day_wage:
                     # Regla especial: siempre desde el día 1 al 66.67%
-                    if dia_global <= 90:
+                    if i <= 90:
                         total_payment += day_wage * 0.6667
-                        _logger.info(f"{self.employee_id.name} lo cual es correcto :3")
-                    elif dia_global >= 91:
+                    elif i >= 91:
                         total_payment += day_wage * 0.5
 
                 else:
-                    if dia_global <= 90:
+                    if i <= 90:
                         total_payment += minimum_day_wage
-                    elif dia_global >= 91:
+                    elif i >= 91:
                         total_payment += minimum_day_wage * 0.5
-
+                        
+            
             result["sick"] = total_payment
         elif self.type == "arl_leave":
             total_payment = 0.0
@@ -178,7 +172,7 @@ class HrPayrollEvents(models.Model):
             
             result["arl"] = total_payment
         elif self.type == "night_surcharge":
-            result["night_surcharge"] = effective_days * hour_wage * 0.35
+            result["night_surcharge"] = effective_days * hour_wage *  0.35
         elif self.type == "unpaid_leave":
             result["deductions"] = effective_days * day_wage
 

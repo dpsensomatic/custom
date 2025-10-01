@@ -1,25 +1,11 @@
 <odoo>
-    <record id='x_account_tax_views_form' model='ir.ui.view'>
-        <field name='name'>x_account_tax_views_form.account.tax.form</field>
+    <record id='x_account_tax_views' model='ir.ui.view'>
+        <field name='name'>x_account_tax_views.account.tax.form</field>
         <field name='model'>account.tax</field>
-        <field name='inherit_id' ref='account.view_tax_form' />
+        <field name='inherit_id' ref='account.view_tax_form'/>
         <field name='arch' type='xml'>
-            <xpath expr='//field[@name="amount_type"]' position='after'>
-                <field name="minimum_base_amount" invisible="amount_type != 'base'"
-                    required="amount_type == 'base'" />
-                <field name="is_tax_on_vat" invisible="amount_type != 'base'"
-                    required="amount_type == 'base'" />
-            </xpath>
-
-            <!-- # Volver visible el campo amount cuando amount_type es 'base' -->
-            <xpath expr="//label[@for='amount']" position="attributes">
-                <attribute name="invisible">amount_type not in ('fixed','percent','division','base')</attribute>
-            </xpath>
-            <xpath expr="//div[field[@name='amount']]" position="attributes">
-                <attribute name="invisible">amount_type not in ('fixed','percent','division','base')</attribute>
-            </xpath>
-            <xpath expr="//field[@name='price_include_override']" position="after">
-                <field name='is_retention'/>
+            <xpath expr='//field[@name="is_base_affected"]' position='after'>
+                <field name="apply_on_invoice_total"/> 
             </xpath>
         </field>
     </record>

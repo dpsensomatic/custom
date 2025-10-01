@@ -81,7 +81,10 @@ class HrPayrollMixin(models.AbstractModel):
             ('date_end', '>=', date_start),
         ])
         
-    
+
+    #
+    # Falta por entender
+    #
     @api.model
     def _diff_360(self, start_date, end_date):
         """Calcula la diferencia en días usando calendario laboral (360 días/año)."""
@@ -94,30 +97,46 @@ class HrPayrollMixin(models.AbstractModel):
         d1_day, d1_month, d1_year = d1.day, d1.month, d1.year
         d2_day, d2_month, d2_year = d2.day, d2.month, d2.year
 
+
         # Ajuste según regla 30/360
         if d1_day == 31:
             d1_day = 30
         if d2_day == 31 and d1_day == 30:
             d2_day = 30
-
         return (d2_year - d1_year) * 360 + (d2_month - d1_month) * 30 + (d2_day - d1_day) + 1
+
+    #
+    # Llama a diferentes funciones dependiendo de la duracion del tiempo otorgado
+    #
     @api.model
     def _expected_workdays(self, date_start, date_end):
-        """Devuelve el número de días del período bajo la convención 30/360."""
+        """
+        Devuelve el número de días del período bajo la convención 30/360.
+        Si el rango cubre un mes completo → siempre 30.
+        """
+        if self._is_full_month(date_start, date_end):
+            
+            return 30
+        
         return self._diff_360(date_start, date_end)
 
     @api.model
     def _compute_days_worked(self, events, totals, date_start, date_end):
         unpaid_days = 0
+        
         for ev in events:
             vals = ev._compute_value(date_start, date_end) or {}
+            
             for k, v in vals.items():
+                
                 try:
                     totals[k] = totals.get(k, 0.0) + float(v or 0.0)
+                    
                 except Exception:
                     pass
 
             if ev.type in ['sick_leave', 'arl_leave', 'unpaid_leave']:
+                
                 event_start = fields.Date.from_string(ev.date)
                 event_end = event_start + timedelta(days=(ev.quantity or 0) - 1)
 
@@ -125,28 +144,14 @@ class HrPayrollMixin(models.AbstractModel):
                 overlap_end = min(event_end, fields.Date.from_string(date_end))
 
                 if overlap_start <= overlap_end:
+                    if self._is_full_month(overlap_start, overlap_end):
+                        unpaid_days = 30
+                        return  unpaid_days
                     days_in_period = self._diff_360(overlap_start, overlap_end)
                     unpaid_days += days_in_period
-
         return unpaid_days    
     
     
-    @api.model
-    def compute_worked_days(self, employee_id, date_start, date_end):
-        """Calcula días trabajados en un período descontando ausencias bajo 30/360."""
-        total_days = self._diff_360(date_start, date_end)
-        events = self._get_events(employee_id, date_start, date_end)
-
-        absent_days = 0
-        for ev in events:
-            ev_start = max(fields.Date.from_string(ev.date_start), fields.Date.from_string(date_start))
-            ev_end = min(fields.Date.from_string(ev.date_end), fields.Date.from_string(date_end))
-
-            if ev_start <= ev_end:
-                absent_days += self._diff_360(ev_start, ev_end)
-
-        return max(0, total_days - absent_days)    
-
     # -----------------------------
     # Auxilio de transporte
     # -----------------------------
@@ -193,3 +198,30 @@ class HrPayrollMixin(models.AbstractModel):
             'vacations': vacations,
         }
     
+    #-----------------------------------------------------
+    # helpers:
+    #-----------------------------------------------------
+    
+    @api.model
+    def _is_full_month(self, date_start, date_end):
+        """
+        Verifica si el rango cubre exactamente un mes calendario completo.
+        Ejemplo: 2025-02-01 a 2025-02-28 (febrero) → True
+                 2025-03-01 a 2025-03-31 (marzo) → True
+        """
+        if not date_start or not date_end:
+            return False
+
+        d1 = fields.Date.from_string(date_start)
+        d2 = fields.Date.from_string(date_end)
+
+        # Validar que empieza el 1
+        if d1.day != 1:
+            return False
+
+        # Último día del mes de inicio
+        from calendar import monthrange
+        last_day = monthrange(d1.year, d1.month)[1]
+
+        # Validar que termina en el último día del mismo mes
+        return (d1.year == d2.year and d1.month == d2.month and d2.day == last_day)
