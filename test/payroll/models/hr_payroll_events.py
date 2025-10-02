@@ -6,15 +6,15 @@ import logging
 _logger = logging.getLogger(__name__)
 
 class HrPayrollEvents(models.Model):
-    # ==========================
-    # Definición del modelo
-    # ==========================
+    # ===========================
+    # == Definición del modelo ==
+    # ===========================
     _name = 'hr.payroll.events'
     _description = 'Eventos de Nomina'
     # ==========================
 
     # ==========================
-    # Campos del modelo
+    # === Campos del modelo ===
     # ==========================
     employee_id = fields.Many2one('hr.employee', string="Empleado", required=True)
     contract_id = fields.Many2one("hr.contract", string="Contrato", compute ='_compute_field_contract')
@@ -90,30 +90,45 @@ class HrPayrollEvents(models.Model):
                 'gross': 0.0,
                 'net':0.0,
                 }
+    # =========================
             
         # ==========================
         # Variables base para cálculos
         # ==========================
-        
         # Parametros salariales vigentes en la fecha de la novedad
-        params = self.env["hr.parameters"].get_parameters_for_date(self.date) 
+        params = self.env["hr.parameters"].get_parameters_for_date(self.date)
         minimum_wage = params.get("minimum_wage", 0.0)
-        minimum_day_wage = minimum_wage/30        
+        minimum_day_wage = minimum_wage/30
         
         # Variables del contrato del empleado
         wage = self.contract_id.wage 
         day_wage = wage / 30
         day_wage_66 = day_wage * 0.6667
         hour_wage = day_wage / 8
-
+        
         # === Calcular días efectivos ===
-    
         month_days = 30
         month_days -= days_worked
+        # ==========================
+
+
+        # ========================
         # === Diccionario base ===
-        result = {"extra_hours": 0.0, "deductions": 0.0, 'sick': 0.0,
-                  "arl": 0.0, 'comissions': 0.0, 'night_surcharge': 0.0, 'other': 0.0}
-        # === Cálculos según tipo de novedad ===
+        # ========================
+        result = {"extra_hours": 0.0,
+                  "deductions": 0.0,
+                  'sick': 0.0,
+                  "arl": 0.0,
+                  'comissions': 0.0,
+                  'night_surcharge': 0.0,
+                  'other': 0.0
+                  }
+        # ========================
+
+        # ========================
+        # Cálculos según tipo de novedad 
+        # ========================
+        # === Calculos de Horas Extras ===
         if self.type == "day_overtime":
             result["extra_hours"] = month_days * hour_wage * 1.25
         elif self.type == "night_overtime":
@@ -122,8 +137,10 @@ class HrPayrollEvents(models.Model):
             result["comissions"] = month_days * wage * 1.10
         elif self.type == "sunday_overtime":
             result["extra_hours"] = month_days * hour_wage * 2.0
-            
+        
+        # === sick_leave = Incapacidades de otro tipo ===
         elif self.type == "sick_leave":
+            ipdb.set_trace()
             total_payment = 0
             for i in range(month_days):
                 # dia_global = days_before_period + i + 1  # el día "real" dentro de la incapacidad
@@ -133,15 +150,15 @@ class HrPayrollEvents(models.Model):
                         total_payment += day_wage * 0.6667
                     elif i >= 91:
                         total_payment += day_wage * 0.5
-
                 else:
                     if i <= 90:
-                        total_payment += minimum_day_wage
+                        total_payment += minimum_day_wage   
                     elif i >= 91:
                         total_payment += minimum_day_wage * 0.5
-                        
-            
+
             result["sick"] = total_payment
+            
+        # === arl_leave = Incapacidad Por ARL ===
         elif self.type == "arl_leave":
             total_payment = 0.0
             if wage < minimum_wage:
@@ -150,9 +167,15 @@ class HrPayrollEvents(models.Model):
                 total_payment = month_days * day_wage * 1
             
             result["arl"] = total_payment
+            
+        # === Recargo nocturno ===
         elif self.type == "night_surcharge":
             result["night_surcharge"] = month_days * hour_wage *  0.35
+            
+        # === unpaid_leave = Dias no trabajados no remunerados            
         elif self.type == "unpaid_leave":
             result["deductions"] = month_days * day_wage
 
+        # === retorna los valores conseguidos en las novedades ===
         return result
+        # ========================

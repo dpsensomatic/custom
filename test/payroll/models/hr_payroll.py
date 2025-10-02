@@ -70,13 +70,16 @@ class HrPayroll(models.Model):
     def action_generate_lines(self):
         """Genera automáticamente una línea de nómina consolidada por empleado."""
         self.ensure_one()
-    
+
+        # Verifica que se hayan elegido las fechas de nomina
         if not self.date_start or not self.date_end:
             raise UserError("Debe definir las fechas de inicio y fin.")
         
+        # Trae Todos los empleados con sus contratos
         employees = self.env['hr.payroll.mixin']._get_employees_with_contracts(self.date_start, self.date_end)
         lines = []
-    
+
+        # Recorre todos los items de los empleados, lo divide entre empleados y contratos
         for employee, contract in employees.items():
             events = self.env['hr.payroll.mixin']._get_events(employee.id, self.date_start, self.date_end)
             parameters = self.env['hr.payroll.mixin']._get_parameter(self.date_start)
@@ -93,10 +96,6 @@ class HrPayroll(models.Model):
             expected = 30
             totals = self._empty_totals()
             days_worked = self.env['hr.payroll.mixin']._compute_days_worked(events, totals,  self.date_start, self.date_end)
-
-            
-
-                
 
 
     
