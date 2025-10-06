@@ -48,15 +48,13 @@
                                     <field name='other_deductions'/>
                                     <field name="deductions"/>
                                     <field name="total_deductions"/>
-                                    <field name="net"/>
-                                    <field name="total_net"/>
-
-
                                     <field name="service_bonus"/>
                                     <field name="severance"/>
                                     <field name="interest_on_severance"/>
                                     <field name="vacations"/>
                                     <field name="total_provisions"/>
+                                    <field name="net"/>
+                                    <field name="total_net"/>
                                 </list>
                                 <form>
                                     <group>
@@ -79,15 +77,13 @@
                                     <field name='other_deductions'/>
                                     <field name="deductions"/>
                                     <field name="total_deductions"/>
-                                    <field name="net"/>
-                                    <field name="total_net"/>
-
-                                    
                                     <field name="service_bonus"/>
                                     <field name="severance"/>
                                     <field name="interest_on_severance"/>
                                     <field name="vacations"/>
                                     <field name="total_provisions"/>
+                                    <field name="net"/>
+                                    <field name="total_net"/>
                                     </group>
                                 </form>
                             </field>

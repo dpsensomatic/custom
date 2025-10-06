@@ -40,8 +40,6 @@
                             <field name="employee_pension_percentage" class="oe_inline" nolabel="1" />
                             <span class="o_form_label oe_inline">%</span>
                         </div>
-
-                        <field name="arl_fee" class='oe_inline'/>
                     </group>
                 </group>
             </form>

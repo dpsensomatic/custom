@@ -42,6 +42,11 @@ class HrPayrollEvents(models.Model):
     ], string='Tipos de Unidad')
     # ==========================
 
+
+    # ==========================
+    # === Campos Computados Del Modelo ===
+    # ==========================
+
     # ==========================
     # Calculo del campo contract_id
     # ==========================
@@ -56,7 +61,7 @@ class HrPayrollEvents(models.Model):
     # ==========================
 
     # ==========================
-    # Cálculo del campo date_end
+    # Cálculo del campo date_end 
     # ==========================
     @api.depends("date", "quantity")
     def _compute_field_date_end(self):
@@ -67,20 +72,20 @@ class HrPayrollEvents(models.Model):
             else:
                 record.date_end = record.date
     # ==========================
+    # ==========================
+
+
+    # ==========================
+    # === Funciones del modelo ===
+    # ==========================
 
     # ==========================
     # Cálculo del valor de la novedad
     # ==========================
     def _compute_value(self, unpaid_days):
-        # Método que calcula el valor de la novedad, recibe 3 parámetros
-        # - self: el registro actual de hr.payroll.events
-        # - payroll_start: fecha de inicio del período de nómina (opcional)
-        # - payroll_end: fecha de fin del período de nómina (opcional)
-        # Devuelve {'gross': X, 'deductions': Y, ...} según el tipo de novedad.
-        # Si payroll_start y payroll_end están definidos, solo cuenta los días dentro de ese rango.
         self.ensure_one()
 
-        # Valida si tiene contrato en caso contrario retorna 0 en todos los valores
+        # === Valida si tiene contrato en caso contrario retorna 0 en todos los valores ===
         if not self.contract_id:
             return {'days_worked': 0.0, 
                     'unpaid_days': 0.0,
@@ -94,8 +99,9 @@ class HrPayrollEvents(models.Model):
         # ==========================
         # Variables base para cálculos
         # ==========================
-        # Parametros salariales vigentes en la fecha de la novedad
-        params = self.env["hr.parameters"].get_parameters_for_date(self.date)
+        
+        # === Parametros salariales vigentes en la fecha de la novedad ===
+        params = self.env["hr.payroll.mixin"]._get_parameter(self.date)
         minimum_wage = params.get("minimum_wage", 0.0)
         minimum_day_wage = minimum_wage/30
         

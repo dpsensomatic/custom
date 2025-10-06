@@ -19,6 +19,7 @@ Este modulo crea la estructura para la gestion de la nomina ajustada a la legisl
     # always loaded
     'data': [
         'security/ir.model.access.csv',
+        'views/hr_contract_views.xml',
         'views/hr_payroll_menu_views.xml',
         'views/hr_parameters_views.xml',
         'views/hr_payroll_events_views.xml',
