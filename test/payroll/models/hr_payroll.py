@@ -116,24 +116,24 @@ class HrPayroll(models.Model):
             employee_eps_percentage = parameters['employee_eps_percentage']
             employee_pension_percentage = parameters['employee_pension_percentage']
             minimun_wage = parameters['minimum_wage']
-    
+
             # === Vacia Los Totales Del Diccionario Con Cada Ciclo ===            
             totals = self._empty_totals()
 
             # === Calculo De Los Dias Trabajados ===
             totals = self.env['hr.payroll.mixin']._compute_days_worked(events, totals,  self.date_start, self.date_end)
-            
+
             # === Calculo del Salario segun incapacidades ===
             totals['wage_earned'] = contract.wage * (totals['days_worked'] / 30)
-            
+
             # === Calculo Auxilio De Transporte ===
             totals['transportation_allowance'] = self.env['hr.payroll.mixin']._compute_transport_allowance(
                 totals['wage_earned'], totals['days_worked'], minimun_wage, transportation_allowance
             )
-    
+
             # === Total A Pagar Al Trabajador ===
             totals['gross'] = self.env['hr.payroll.mixin']._compute_total_gross(totals)
-    
+
             # === Aportes A Seguridad Social (Salud, Pension, ARL) ===
             totals = self.env['hr.payroll.mixin']._compute_contributions(
                 totals,
@@ -144,14 +144,14 @@ class HrPayroll(models.Model):
                 minimun_wage,
                 contract,
             )
-            
+
             # === Aportes A Prestaciones Sociales (Prima, Cesantias, Vacaciones) ===
             totals = self.env['hr.payroll.mixin']._compute_benefits( totals)
 
             # === Totales De Aportes A Seguridad Social (Salud, Pension, ARL) ===
             # Total A Pagar Trabajador
             totals['deductions'] = totals['health_contribution'] + totals['pension_contribution']
-            
+
             # Total A Pagar Empleador
             totals['total_deductions'] = totals['deductions'] + totals['arl_contribution']
 
@@ -166,7 +166,7 @@ class HrPayroll(models.Model):
                 'employee_id': employee.id,
                 'contract_id': contract.id,
                 'base_wage': contract.wage,
-                
+
                 # === Salario Ajustado Por Las Novedades ===
                 'wage_earned': totals['wage_earned'],
                 'days_worked': totals['days_worked'],
@@ -176,7 +176,7 @@ class HrPayroll(models.Model):
                 'night_surcharge': totals['night_surcharge'],
                 'other': totals['other'],
                 'gross': totals['gross'],
-                
+
                 # === Aportes A Seguridad Social ===
                 'health_contribution': totals['health_contribution'],
                 'pension_contribution': totals['pension_contribution'],
@@ -184,32 +184,32 @@ class HrPayroll(models.Model):
                 'company_pension_contribution': totals['company_pension_contribution'],
                 'arl_contribution': totals['arl_contribution'],
                 'other_deductions': 0.0,
-                
+
                 'deductions': totals['deductions'],
                 'total_deductions': totals['total_deductions'],
-                
+
                 # === Pagos A Prestaciones Sociales ===
                 'service_bonus': totals['service_bonus'],
                 'severance': totals['severance'],
                 'interest_on_severance': totals['interest_on_severance'],
                 'vacations': totals['vacations'],
                 'total_provisions': totals['total_provisions'],
-                
+
                 # === Totales A Pagar ===
                 # Pago Empleado
                 'net': totals['gross'] - totals['deductions'],
                 # Pago Empresa
                 'total_net': totals['gross'] + totals['total_deductions'],
             }
-            
+
             # ===  ===
             lines.append((0, 0, vals_line))
 
         # ===  ===
         self.line_ids = [(5, 0, 0)] + lines
-    
+
     # ========================
-        
+
     # ========================
     # Genera Los Apuntes Contables
     # ========================

@@ -4,21 +4,15 @@ class HrPayrollSettlementLine(models.Model):
     _name = "hr.payroll.settlement.line"
     _description = "Línea de Liquidación"
 
-    settlement_id = fields.Many2one(
-        "hr.payroll.settlement",
-        string="Liquidación",
-        required=True,
-        ondelete="cascade"
-    )
-
-    name = fields.Char(string="Concepto")
-
-    # Campos de liquidación
-    service_bonus = fields.Float(string="Prima de Servicios")
-    severance = fields.Float(string="Cesantías")
-    interest_on_severance = fields.Float(string="Intereses sobre Cesantías")
-    vacations = fields.Float(string="Vacaciones")
-    total_provisions = fields.Float(string="Total Provisiones")
-
-    # Campo genérico por si quieres manejar valores adicionales
-    amount = fields.Float(string="Valor")
+    liquidation_id = fields.Many2one('hr.payroll.settlement', string="Liquidación", ondelete='cascade')
+    concept = fields.Char(string="Concepto")
+    start_date = fields.Date(string="Fecha Inicial")
+    end_date = fields.Date(string="Fecha Final")
+    days_period = fields.Float(string="Días Período")
+    absences = fields.Float(string="Ausencia")
+    days_settlement = fields.Float(string="Días Liq.")
+    average_wage = fields.Monetary(string="Salario Promedio")
+    value_wage = fields.Monetary(string="Vr Líquid.")
+    advances = fields.Monetary(string="Anticipos")
+    net_value = fields.Monetary(string="Valor Neto")
+    currency_id = fields.Many2one('res.currency', default=lambda self: self.env.company.currency_id)

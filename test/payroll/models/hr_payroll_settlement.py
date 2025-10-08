@@ -4,6 +4,7 @@
 # ==========================
 from odoo import fields, models, api
 from odoo.exceptions import UserError
+import ipdb
 
 class HrPayrollSettlement(models.Model):
     _name = 'hr.payroll.settlement'
@@ -11,26 +12,41 @@ class HrPayrollSettlement(models.Model):
 
     employee_id = fields.Many2one('hr.employee', string="Empleado", required=True)
     contract_id = fields.Many2one("hr.contract", string="Contrato", required=True)
-    line_ids = fields.One2many("hr.payroll.settlement.line", "settlement_id", string="Líneas de Liquidación")
+    line_ids = fields.One2many("hr.payroll.settlement.line", "liquidation_id", string="Líneas de Liquidación")
 
     name = fields.Char(string="Nombre de la liquidacion", required=True)
     settlement_creation_date = fields.Date(string="Fecha de creacion de la liquidacion")
     settlement_cutoff_date = fields.Date(string="Fecha de corte de la liquidacion")
     termination_reason = fields.Char(string="Causa de retiro ")
-    contract_start_date = fields.Date(string="Fecha inicio contrato", compute='_compute_contract_fields', store=True)
-    contract_end_date = fields.Date(string="Fecha fin contrato", compute='_compute_contract_fields', store=True)
     employee_identification_number = fields.Char(string="Numero de identificacion", compute='_compute_contract_fields', store=True)
     contract_type = fields.Char(string="Tipo de contrato", compute='_compute_contract_fields', store=True)
+    contract_start_date = fields.Date(string="Fecha inicio contrato", compute='_compute_contract_fields', store=True)
+    contract_end_date = fields.Date(string="Fecha fin contrato", compute='_compute_contract_fields', store=True)
     job_position = fields.Char(string="Cargo", compute='_compute_contract_fields', store=True)
-    days_in_contract = fields.Integer(string="Días contrato", compute="_compute_days")
-    absences_days = fields.Integer(string="Ausencia", default=0)  
-    days_liquidated = fields.Integer(string="Días liquidados", compute="_compute_days")
-    wage_accrued = fields.Float(string="Salario devengado")
     state = fields.Selection([
         ('draft', 'Borrador'),
         ('done', 'Validado'),
         ('cancelled', 'Cancelado')
     ], string='Estado', default='draft', required=True)
+
+    # ========================
+    # Helpers pequeños
+    # ========================
+    def _empty_totals(self):
+        """Diccionario base con todas las claves que usamos.
+        Si agregas nuevos componentes, añádelos aquí."""
+        return {                 
+            'concept': 0.0,
+            'start_date': 0.0,
+            'end_date': 0.0,
+            'days_period': 0.0,
+            'absences': 0.0,
+            'days_settlement': 0.0,
+            'average_wage': 0.0,
+            'value_wage': 0.0,
+            'advances': 0.0,
+            'net_value': 0.0,
+        }
 
     @api.depends('employee_id')
     def _compute_contract_fields(self):
@@ -64,5 +80,46 @@ class HrPayrollSettlement(models.Model):
                 record.days_liquidated = 0
                 
     def action_generate_settlement_lines(self):
-        """Genera automáticamente las líneas de liquidación para el empleado."""
-        print("Generando líneas de liquidación...")
+        """Genera las líneas según los conceptos predefinidos"""
+        lines = []
+        concepts = ['vacaciones', 'prima', 'cesantias', 'intereses_cesantias']
+
+        for concept in concepts:
+            vals_line = self._get_line_vals(concept)
+            if vals_line:
+                lines.append((0, 0, vals_line))
+
+        self.line_ids = [(5, 0, 0)] + lines
+
+    def _get_line_vals(self, concept):
+        """Devuelve el diccionario de valores por concepto"""
+        ipdb.set_trace()
+        contract = self.employee_id.contract_id
+        wage = contract.wage
+        days_period = (self.settlement_cutoff_date - contract.date_start).days + 1
+
+        # Cálculos base (ejemplo)
+        if concept == 'vacaciones':
+            value = wage * days_period / 720
+        elif concept == 'prima':
+            value = wage * days_period / 360
+        elif concept == 'cesantias':
+            value = wage * days_period / 360
+        elif concept == 'intereses_cesantias':
+            ces = wage * days_period / 360
+            value = ces * 0.12 * days_period / 360
+        else:
+            value = 0
+
+        return {
+            'concept': concept.replace('_', ' ').title(),
+            'start_date': contract.date_start,
+            'end_date': self.settlement_cutoff_date,
+            'days_period': days_period,
+            'absences': 0,
+            'days_settlement': days_period,
+            'average_wage': wage,
+            'value_wage': value,
+            'advances': 0,
+            'net_value': value,
+        }

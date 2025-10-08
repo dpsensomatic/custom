@@ -76,7 +76,7 @@ class HrPayrollEvents(models.Model):
 
 
     # ==========================
-    # === Funciones del modelo ===
+    # Funciones del modelo 
     # ==========================
 
     # ==========================
@@ -114,7 +114,7 @@ class HrPayrollEvents(models.Model):
 
 
         # ========================
-        # === Diccionario base ===
+        # Diccionario base 
         # ========================
         result = {'days_worked': 0.0, 
                     'unpaid_days': 0.0,
@@ -158,7 +158,7 @@ class HrPayrollEvents(models.Model):
                         total_payment += minimum_day_wage * 0.5
             result["sick_leave"] = total_payment
             
-        # === unpaid_leave = Dias no trabajados no remunerados            
+        # === unpaid_leave = Dias no trabajados no remunerados ===           
         elif self.type == "unpaid_leave":
             result["sick_leave"] = unpaid_days * day_wage
             

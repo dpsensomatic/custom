@@ -22,9 +22,8 @@
                         <field name="name"/>
                         <field name="date_start"/>
                         <field name="date_end"/>
-                        <field name="state" readonly="1"/>
+                        <field name="state"/>
                     </group>
-
                     <notebook>
                         <page string="Líneas de Nómina">
                             <field name="line_ids">
