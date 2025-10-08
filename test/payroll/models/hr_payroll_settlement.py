@@ -55,7 +55,7 @@ class HrPayrollSettlement(models.Model):
             # Ajuste según regla 30/360
             if d1 == 31:
                 d1 = 30
-            if d2 == 31 and d1 == 30:
+            if d2 == 31:
                 d2 = 30
             return (y2 - y1) * 360 + (m2 - m1) * 30 + (d2 - d1) + 1
         for record in self:
