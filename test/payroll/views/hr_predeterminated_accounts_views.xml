@@ -1,0 +1,97 @@
+<odoo>
+
+    <!-- Form -->
+    <record id="hr_predetermined_accounts_form" model="ir.ui.view">
+        <field name="name">hr.predetermined.accounts.form</field>
+        <field name="model">hr.predetermined.accounts</field>
+        <field name="arch" type="xml">
+            <form>
+                <group>
+                    <field name="company_id" readonly="1" />
+                </group>
+                <group>
+                    <group string="Cuentas Debito">
+
+                    <group string='Cuentas Generales Nómina'>
+                        <field name="wage_account_debit" />
+                        <field name="withholding_tax_account_debit" />
+                    </group>
+                    <group string='Novedades'>
+                        <field name="unpaid_days_account_debit" />
+                        <field name="eps_incapacity_account_debit" />
+                        <field name="arl_incapacity_account_debit" />
+                        <field name="commission_account_debit" />
+                    </group>
+                    <group string='Auxilios'>
+                        <field name="transport_allowance_account_debit" />
+                        <field name="cellular_allowance_account_debit" />
+                    </group>
+                    <group string='Aportes A Seguridad Social'>
+                        <field name="health_account_debit" />
+                        <field name="pension_account_credit" />
+                        <field name="arl_account_debit" />
+                        <field name="box_account_debit" />
+                    </group>
+                    <group string='Bonificaciones'>
+                        <field name="severance_account_debit" />
+                        <field name="severance_interest_account_debit" />
+                        <field name="service_bonus_account_debit" />
+                        <field name="vacation_account_debit" />
+                    </group>
+                    </group>
+                    <group string="Cuentas Credito">
+                    
+                    <group string='Cuentas Generales Nómina'>
+                        <field name="wage_account_credit" />
+                        <field name="withholding_tax_account_credit" />
+                    </group>
+                    <group string='Novedades'>
+                        <field name="unpaid_days_account_credit" />
+                        <field name="eps_incapacity_account_credit" />
+                        <field name="arl_incapacity_account_credit" />
+                        <field name="commission_account_credit" />
+                    </group>
+                    <group string='Auxilios'>
+                        <field name="transport_allowance_account_credit" />
+                        <field name="cellular_allowance_account_credit" />
+                    </group>
+                    <group string='Aportes A Seguridad Social'>
+                        <field name="health_account_credit" />
+                        <field name="pension_account_credit" />
+                        <field name="arl_account_credit" />
+                        <field name="box_account_credit" />
+                    </group>
+                    <group string='Bonificaciones'>
+                        <field name="severance_account_credit" />
+                        <field name="severance_interest_account_credit" />
+                        <field name="service_bonus_account_credit" />
+                        <field name="vacation_account_credit" />
+                    </group>
+                    </group>
+                </group>
+            </form>
+        </field>
+    </record>
+
+    <!-- Views -->
+    <record id="hr_predetermined_accounts_list" model="ir.ui.view">
+        <field name="name">hr.predetermined.accounts.list</field>
+        <field name="model">hr.predetermined.accounts</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="company_id" />
+            </list>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_hr_predetermined_accounts" model="ir.actions.act_window">
+        <field name="name">Cuentas Predeterminadas</field>
+        <field name="res_model">hr.predetermined.accounts</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- Menu -->
+    <menuitem id="menu_hr_predetermined_accounts" name="Cuentas predeterminadas"
+        parent="payroll.configuration" action="action_hr_predetermined_accounts" />
+</odoo>

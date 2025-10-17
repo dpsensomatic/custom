@@ -1,16 +1,16 @@
 <odoo>
 
     <!-- Action -->
-    <record id="action_hr_payroll_settlement" model="ir.actions.act_window">
+    <record id="action_hr_service_bonus" model="ir.actions.act_window">
         <field name="name">Liquidación</field>
-        <field name="res_model">hr.payroll.settlement</field>
+        <field name="res_model">hr.service.bonus</field>
         <field name="view_mode">list,form</field>
     </record>
 
     <!-- Form -->
-    <record id="view_hr_payroll_settlement_form" model="ir.ui.view">
-        <field name="name">hr.payroll.settlement.form</field>
-        <field name="model">hr.payroll.settlement</field>
+    <record id="view_hr_service_bonus_form" model="ir.ui.view">
+        <field name="name">hr.service.bonus.form</field>
+        <field name="model">hr.service.bonus</field>
         <field name="arch" type="xml">
             <form string="Liquidación de Nómina">
                 <header>
@@ -20,20 +20,13 @@
                 <sheet>
                     <group>
                         <group>
-                            <field name='state' readonly="1" />
-                            <field name="name" />
-                            <field name="employee_id" />
-                            <field name='termination_reason' />
-                            <field name="creation_date" />
-                            <field name="cutoff_date" />
+                            <field name='bonus_date_end' />
+                            <field name="contract_start_date" />
                         </group>
                         <group>
-                            <field name="contract_id" />
-                            <field name="contract_start_date" />
-                            <field name="identification_number" />
-                            <field name="contract_end_date" />
-                            <field name="contract_type" />
-                            <field name="job_position" />
+                            <field name="days_period" />
+                            <field name="absences" />
+                            <field name="days_settlement" />
                         </group>
                     </group>
 
@@ -41,7 +34,7 @@
                         <page string="Líneas de Liquidación">
                             <field name="line_ids">
                                 <list editable="bottom">
-                                    <field name="concept" />
+
                                     <field name="start_date" />
                                     <field name="end_date" />
                                     <field name="days_period" />
@@ -82,12 +75,12 @@
     </record>
 
     <!-- List -->
-    <record id="view_hr_payroll_settlement_list" model="ir.ui.view">
-        <field name="name">hr.payroll.settlement.list</field>
-        <field name="model">hr.payroll.settlement</field>
+    <record id="view_hr_service_bonus_list" model="ir.ui.view">
+        <field name="name">hr.service.bonus.list</field>
+        <field name="model">hr.service.bonus</field>
         <field name="arch" type="xml">
             <list>
-                <field name='state' readonly="1" />
+                <field name='state' />
                 <field name="name" />   
                 <field name="employee_id" />
                 <field name='termination_reason' />
@@ -98,7 +91,7 @@
     </record>
 
     <!-- Menu Item -->
-    <menuitem name="Liquidación" id="payroll.settlement" parent="payroll.payroll"
-        action='action_hr_payroll_settlement' sequence='10' />
+    <menuitem name="Liquidación" id="service.bonus" parent="payroll.payroll"
+        action='action_hr_service_bonus' sequence='10' />
 
 </odoo>

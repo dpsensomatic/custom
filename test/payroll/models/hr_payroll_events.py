@@ -7,20 +7,21 @@ _logger = logging.getLogger(__name__)
 
 class HrPayrollEvents(models.Model):
     # ===========================
-    # == Definición del modelo ==
+    # Definición Del Modelo 
     # ===========================
     _name = 'hr.payroll.events'
     _description = 'Eventos de Nomina'
     # ==========================
 
     # ==========================
-    # === Campos del modelo ===
+    # Campos Del Modelo 
     # ==========================
     employee_id = fields.Many2one('hr.employee', string="Empleado", required=True)
     contract_id = fields.Many2one("hr.contract", string="Contrato", compute ='_compute_field_contract')
     type = fields.Selection([
-        ('commissions', 'Comisiones'),
-        ('day_ot_25', 'Hora Extra Diurna 25%'),
+        ('commissions', 'Comisiones'), # Valor Fijo
+        ('bounties', 'Bonificaciones'), # Valor Fijo
+        ('day_ot_25', 'Hora Extra Diurna 25%'), # No se usa
         ('night_shift_35', 'Hora nocturno 35%'),
         ('night_ot_75', 'Hora extra nocturno 75%'),
         ('holiday_80', 'Hora dominical y festivo 80%'),
@@ -28,23 +29,41 @@ class HrPayrollEvents(models.Model):
         ('holiday_night_115', 'Hora nocturno en dominical y festivo 115%'),
         ('holiday_night_ot_155', 'Hora extra nocturno en domingos y festivos 155%'),
         ('night_surcharge', 'Hora Recargo Nocturno'),
-        ('sick_leave', 'Incapacidades'),
-        ('arl_leave', 'Incapacidad ARL'),
-        ('unpaid_leave', 'Permiso No Remunerado'),
-    ], string='Tipo de Novedad')
+        ('sick_leave', 'Incapacidades'), # Fecha, Cantidad, Remunerado, cuenta para los dias trabajados pero no para beneficios
+        ('arl_leave', 'Incapacidad ARL'), # Fecha, Cantidad, Remunerado, cuenta para los dias trabajados pero no para beneficios  
+        ('unpaid_leave', 'Permiso No Remunerado'), # Fecha, Cantidad, No Remunerado, cuenta para los dias trabajados y descuenta en beneficios
+    ], string='Tipo de Novedad', required=True)
+    fixed_value = fields.Monetary(
+        string="Valor fijo",
+        currency_field="company_currency_id",
+    )
+    company_id = fields.Many2one(
+        'res.company',
+        string='Compañía',
+        required=True,
+        default=lambda self: self.env.company
+    )
+
+    company_currency_id = fields.Many2one(
+        'res.currency',
+        string='Moneda de la compañía',
+        related='company_id.currency_id',
+        store=True,
+        readonly=True
+    )
     date = fields.Date(string='Fecha de la Novedad')
     date_end = fields.Date(string="Fecha fin", compute="_compute_field_date_end", store=True)
-    quantity = fields.Integer(string='Cantidad de dias de la novedad')
+    quantity = fields.Integer(string='Cantidad de dias de la novedad' , default = 1)
     unit = fields.Selection([
         ('day', 'Día'),
         ('unit', 'Unidad'),
         ('hour', 'Hora')
-    ], string='Tipos de Unidad')
+    ], string='Tipos de Unidad', default = 'day')
     # ==========================
 
 
     # ==========================
-    # === Campos Computados Del Modelo ===
+    # Campos Computados Del Modelo
     # ==========================
 
     # ==========================
@@ -126,7 +145,6 @@ class HrPayrollEvents(models.Model):
         # ========================
 
 
-        
         # ========================
         # Cálculos según tipo de novedad 
         # ========================
@@ -135,10 +153,11 @@ class HrPayrollEvents(models.Model):
             result["overtime_hours"] = unpaid_days * hour_wage * 1.25
         elif self.type == "night_overtime":
             result["overtime_hours"] = unpaid_days * hour_wage * 1.75
-        elif self.type == "commissions":
-            result["other"] = unpaid_days * wage * 1.10
         elif self.type == "sunday_overtime":
             result["overtime_hours"] = unpaid_days * hour_wage * 2.0
+        
+        elif self.type == "commissions":
+            result["other"] = self.fixed_value or 0.0
         
         # === sick_leave = Incapacidades de otro tipo ===
         elif self.type == "sick_leave":
@@ -160,7 +179,7 @@ class HrPayrollEvents(models.Model):
             
         # === unpaid_leave = Dias no trabajados no remunerados ===           
         elif self.type == "unpaid_leave":
-            result["sick_leave"] = unpaid_days * day_wage
+            result["sick_leave"] = 0.0
             
         # === arl_leave = Incapacidad Por ARL ===
         elif self.type == "arl_leave":

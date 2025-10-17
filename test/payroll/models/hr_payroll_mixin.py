@@ -1,14 +1,25 @@
 from odoo import models, api, fields, _
 from odoo.exceptions import UserError
-from datetime import timedelta
+from datetime import date
 import ipdb
 
+# ========================
+# Modelo Base Para Calculos/Funciones
+# ========================
 class HrPayrollMixin(models.AbstractModel):
+    
+    # === Descripcion Del Modelo ===
     _name = "hr.payroll.mixin"
     _description = "Funciones comunes para cálculos de nómina"
+    
+# ========================
+    
+# ========================
+# Buscar Y Traer Informacion
+# ========================
 
     # ========================
-    # Traer Trabajadores y sus contratos - hr_employee.py, hr_contract.py
+    # Traer Trabajadores y sus contratos
     # ========================
     @api.model
     def _get_employees_with_contracts(self, date_start, date_end):
@@ -41,7 +52,6 @@ class HrPayrollMixin(models.AbstractModel):
     # ========================
     @api.model
     def _get_events(self, employee_id, date_start, date_end):
-
         # === Retorna Los Valores De Los Eventos Segun El Periodo De Nomina ===
         return self.env['hr.payroll.events'].search([
             ('employee_id', '=', employee_id),
@@ -76,38 +86,51 @@ class HrPayrollMixin(models.AbstractModel):
             "employee_pension_percentage": record.employee_pension_percentage,
         }
     # ========================
+# ========================
     
-    
+# ========================
+# Funciones Principales (Estas Funciones Son Llamadas Desde Otros Modelos)
+# ========================
+
+  # ========================
+  # Payroll   
+  # ======================== 
+  
     # ========================
-    # Computa Los Dias a pagar segun incapacidades 
+    # Computa Los Dias A Pagar Segun Incapacidades 
     # ========================
     @api.model
     def _compute_days_worked(self, events, totals, date_start, date_end):
         
-        # === Si no hay eventos se guardan los dias trabajados en 30 ===
+        # === Filtra Todos Los Eventos Que Pertenezcan A Incapacidades ===
+        allowed_types = ['sick_leave', 'unpaid_leave', 'arl_leave']
+        events =  events.filtered(lambda e: e.type in allowed_types)
+        
+        # === Si No Hay Eventos Se Guardan Los Dias Trabajados En 30 ===
         if not events:
             totals['days_worked'] = 30
             return totals
         
-        # === Recorre los eventos/novedades para seleccionar como afectara la nomina ===
-        totals['unpaid_days'] = self._compute_totals_unpaid_days(events, totals, date_start, date_end)
+        # === Se Seccionan Las Fechas Y Se Traen Los Totales De Dias De Incapacidad ===
+        split_dates = self._split_event_dates(events, date_start, date_end)
+        totals['unpaid_days'] = self._compute_all_unpaid_days(split_dates, totals)
         
-        # === Se ajusta segun la cantidad de dias del mes === 
-        d1 = fields.Date.from_string(date_start)
-        d2 = fields.Date.from_string(date_end)
-
-        if d1.month == 2 and totals['unpaid_days'] > 15:
+        # === Se Ajustan Los Dias Trabajados Segun Los Dias Del Mes === 
+        if split_dates[0]['d1'].month == 2 and totals['unpaid_days'] > 15:
             totals['days_worked'] = 28.0 - totals['unpaid_days']
-        elif d2.day == 31 and totals['unpaid_days'] > 15:
+        elif split_dates[0]['d2'].day == 31 and totals['unpaid_days'] > 15:
             totals['days_worked'] = 31.0 - totals['unpaid_days']
         else:
             totals['days_worked'] = 30.0 - totals['unpaid_days']
 
-        # === Recorre los eventos trayendo los valores segun incapacidades ===
-        for ev in events:
+        # === Recorre Los Eventos Trayendo Los Valores Segun Incapacidades ===
+        for ev, split in zip(events, split_dates):
+            
+            # === Trae La Incapacidad Por Cada Evento === 
             totals['unpaid_days'] = 0.0
-            totals['unpaid_days'] = self._compute_unpaid_days(ev, totals, date_start, date_end)
-
+            totals['unpaid_days'] = self._compute_single_unpaid_days(split, totals)
+            
+            
             # === Llama a la funcion encargada de asignar los valores segun el diccionario ===
             vals = ev._compute_value(totals['unpaid_days']) or {}
             for k, v in vals.items():
@@ -117,62 +140,15 @@ class HrPayrollMixin(models.AbstractModel):
                     pass
         
         return totals
-
-    # === Computa El Total De Los Dias Incapacidad ===
-    def _compute_totals_unpaid_days(self, events, totals, date_start, date_end):
-        for ev in events:
-            d1 = fields.Date.from_string(date_start)
-            d2 = fields.Date.from_string(date_end)
-            e1 = fields.Date.from_string(ev.date)
-            e2 = fields.Date.from_string(ev.date_end)
-            
-            # === Filtra por eventos de incapacidad ===
-            if ev.type not in ['sick_leave','arl_leave','unpaid_leave']:
-                totals['unpaid_days'] = 0
-                return 
-
-            # === Verifica que traiga las novedades vigentes en el periodo de nomina ===
-            if d1.month == e1.month or d2.month == e2.month:
-                overlap_start = max(ev.date, date_start)
-                overlap_end = min(ev.date_end, date_end)
-                o1 = fields.Date.from_string(overlap_start)
-                o2 = fields.Date.from_string(overlap_end)
-                
-                # === Dias no trabajados ===
-                unpaid_days = o2.day - o1.day + 1
-                totals['unpaid_days'] = totals.get('unpaid_days', 0) + unpaid_days
-
-        return totals['unpaid_days']
+    # ========================
     
-    # === Computa Los Dias De Incapacidad ===
-    def _compute_unpaid_days(self, events, totals, date_start, date_end):
-        for ev in events:
-            d1 = fields.Date.from_string(date_start)
-            d2 = fields.Date.from_string(date_end)
-            e1 = fields.Date.from_string(ev.date)
-            e2 = fields.Date.from_string(ev.date_end)
-            
-            # === Filtra por eventos de incapacidad ===
-            if ev.type not in ['sick_leave','arl_leave','unpaid_leave']:
-                totals['unpaid_days'] = 0
-                return 
-
-                # === Verifica Que Haya Novedades Vigentes En El Periodo De Nomina ===
-            if d1.month == e1.month or d2.month == e2.month:
-                overlap_start = max(ev.date, date_start)
-                overlap_end = min(ev.date_end, date_end)
-                o1 = fields.Date.from_string(overlap_start)
-                o2 = fields.Date.from_string(overlap_end)
-                
-                # === Dias no trabajados ===
-                unpaid_days = o2.day - o1.day + 1
-                if d1.month == 2 and unpaid_days > 15:
-                    unpaid_days = o2.day - o1.day + 3
-                if d2.day == 31 and unpaid_days > 15:
-                    unpaid_days = o2.day - o1.day 
-                
-                totals['unpaid_days'] = totals.get('unpaid_days', 0) + unpaid_days
-                return totals['unpaid_days']
+    
+    # ========================
+    # Retorna El total A Pagar Para El Trabajador
+    # ========================
+    def _compute_total_gross(self, totals):
+            totals= totals['wage_earned'] + totals['sick_leave'] + totals['overtime_hours'] + totals['night_surcharge'] + totals['other'] + totals['transportation_allowance']
+            return totals
     # ========================
     
     
@@ -219,11 +195,74 @@ class HrPayrollMixin(models.AbstractModel):
         totals['vacations'] = totals['wage_earned'] *0.0417
         totals['total_provisions'] = totals['service_bonus'] + totals['severance'] + totals['interest_on_severance'] + totals['vacations']
         return totals
-    # ========================
+    # ========================  
+
+  
+  # ========================
+  # Settlement
+  # ========================
     
+    # ========================
+    # Computa Los Dias A Liquidar
+    # ========================
+    def _compute_settlement_days(self, concept, events, start_date, end_date, totals):
+        
+        # === Trae El Total De Dias Laborales ===
+        if concept == 'prima':
+            start_date_prima = date(2025,7,1)
+            totals['days_period'] = self._calculate_total_settlement_days(start_date_prima, end_date)
+        else:
+            totals['days_period'] = self._calculate_total_settlement_days(start_date, end_date)
+        
+        if not events:
+            totals['days_settlement'] = totals['days_period']
+            return totals
+        
+        # === ===
+        for ev in events:
+            if concept == 'prima':
+                totals['absences'] = self._calculate_total_settlement_days(ev.date, ev.date_end)
+                totals['days_settlement'] = totals['days_period'] - totals['absences']
+
+            else:
+                totals['absences'] = self._calculate_total_settlement_days(ev.date, ev.date_end)
+                totals['days_settlement'] = totals['days_period'] - totals['absences']
+        return totals
+    # ========================
+
+
+    # ========================
+    # Calcula El Salario A Liquidar
+    # ========================
+    def _calculate_liquidated_wage(self, concept, totals):
+        
+        # === Calcula Segun El Concepto ===
+        if concept == 'vacaciones':
+            totals['value_wage'] = totals['average_wage'] * totals['days_settlement'] / 720
+        elif concept == 'prima':
+            totals['value_wage'] = totals['average_wage'] * totals['days_settlement'] / 360
+        elif concept == 'cesantias':
+            totals['value_wage'] = totals['average_wage'] * totals['days_settlement'] / 360
+        elif concept == 'intereses_cesantias':
+            ces = totals['average_wage'] * totals['days_settlement'] / 360
+            totals['value_wage'] = ces * 0.12 * totals['days_settlement'] / 360
+        else:
+            totals['value_wage'] = 0
+            
+        return totals
+    # ========================
+
+  # ========================
+
+# ========================
+
+
+# ========================
+# Helpers
+# ========================
     
     # ========================
-    # Helpers
+    # Ajusta La Tarifa Del ARL
     # ========================
     def _assign_arl(self, contract):
     
@@ -236,8 +275,81 @@ class HrPayrollMixin(models.AbstractModel):
         }
         arl_fee_value = arl_fee_map.get(contract, 0.0)
         return arl_fee_value
-    
-    def _compute_total_gross(self, totals):
-            totals= totals['wage_earned'] + totals['sick_leave'] + totals['overtime_hours'] + totals['night_surcharge'] + totals['other'] + totals['transportation_allowance']
-            return totals
     # ========================
+    
+    
+    # ========================
+    # Secciona Las Fechas Y Las Guarda En Un Diccionario
+    # ========================
+    def _split_event_dates(self, events, date_start, date_end):
+        
+        # === Inicializa El Diccionario
+        split_dates= []
+        
+        # === Reccorre Los Eventos Y Retorna Las Fechas ===
+        for ev in events:
+            d1 = fields.Date.from_string(date_start)
+            d2 = fields.Date.from_string(date_end)
+            e1 = fields.Date.from_string(ev.date)
+            e2 = fields.Date.from_string(ev.date_end)
+            overlap_start = max(e1, d1)
+            overlap_end = min(e2, d2)
+            o1 = fields.Date.from_string(overlap_start)
+            o2 = fields.Date.from_string(overlap_end)
+            split_dates.append({
+            'd1': d1,
+            'd2': d2,
+            'e1': e1,
+            'e2': e2,
+            'o1': o1,
+            'o2': o2,            
+            })
+        return split_dates
+    # ========================
+    
+    
+    # ========================
+    # Hace El Calculo De Los Dias Liquidados
+    # ========================
+    def _calculate_total_settlement_days(self, start_date, end_date):
+        """Calcula la diferencia en días usando calendario laboral (360 días/año)."""
+        if not start_date or not end_date:
+            return 0
+        
+        d1, m1, y1 = start_date.day, start_date.month, start_date.year
+        d2, m2, y2 = end_date.day, end_date.month, end_date.year
+        # Ajuste según regla 30/360
+        if d1 == 31:
+            d1 = 30
+        if d2 == 31:
+            d2 = 30
+        return (y2 - y1) * 360 + (m2 - m1) * 30 + (d2 - d1) + 1
+    # ========================
+
+        
+    # ========================
+    # Computa El Total De Los Dias De Incapacidad
+    # ========================
+    def _compute_all_unpaid_days(self, split_dates, totals):
+        for split in split_dates:
+            unpaid_days = split['o2'].day - split['o1'].day + 1
+            totals['unpaid_days'] = totals.get('unpaid_days', 0) + unpaid_days
+            
+        return totals['unpaid_days']
+    # ========================
+    
+    
+    # ========================
+    # Computa Un Solo Evento Por Cada Ciclo
+    # ========================
+    def _compute_single_unpaid_days(self, split, totals):
+        # === Dias no trabajados ===
+            unpaid_days = split['o2'].day - split['o1'].day + 1
+            if split['d1'].month == 2 and unpaid_days > 15:
+                unpaid_days = split['o2'].day - split['o1'].day + 3
+            if split['d2'].day == 31 and unpaid_days > 15:
+                unpaid_days = split['o2'].day - split['o1'].day 
+            totals['unpaid_days'] = totals.get('unpaid_days', 0) + unpaid_days
+            return totals['unpaid_days']
+    # ========================
+# ========================

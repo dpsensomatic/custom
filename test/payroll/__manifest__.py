@@ -25,6 +25,7 @@ Este modulo crea la estructura para la gestion de la nomina ajustada a la legisl
         'views/hr_payroll_events_views.xml',
         'views/hr_payroll_settlement_views.xml',
         'views/hr_payroll_views.xml',
+        'views/hr_predeterminated_accounts_views.xml',
     ],
     'installable': True,
     'application': True,

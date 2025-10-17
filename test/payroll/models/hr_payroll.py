@@ -26,10 +26,34 @@ class HrPayroll(models.Model):
         ('confirmed', 'Confirmada'),
         ('done', 'Cerrada'),
     ], string="Estado", default="draft")
-
+    
     # === Campos Many ===
-    line_ids = fields.One2many("hr.payroll.line", "payroll_id", string="Líneas de nómina")
-    # ========================
+    line_ids = fields.One2many(
+        "hr.payroll.line", 
+        "payroll_id", 
+        string="Líneas de nómina"
+    )
+    account_line_ids = fields.One2many(
+        "hr.payroll.account.line",
+        "payroll_id",
+        string="Líneas contables"
+    )
+    company_id = fields.Many2one(
+        'res.company',
+        string='Compañía',
+        default=lambda self: self.env.company,
+        required=True,
+        readonly=True
+    )
+    currency_id = fields.Many2one(
+        'res.currency',
+        string='Moneda',
+        related='company_id.currency_id',
+        store=True,
+        readonly=True
+    )
+    
+# ========================
     
     
     # ========================
@@ -79,6 +103,8 @@ class HrPayroll(models.Model):
                 # Pago Empresa
                 'total_net':0.0,
         }
+    # ========================
+    
 
     # ========================
     # Acción principal (Genera Las Lineas De La Nomina)
@@ -106,9 +132,9 @@ class HrPayroll(models.Model):
         for employee, contract in employees.items():
 
             # === Trae Los Eventos Por Empleado Segun Fecha De La Nomina ===
+             
             events = self.env['hr.payroll.mixin']._get_events(employee.id, self.date_start, self.date_end)
             parameters = self.env['hr.payroll.mixin']._get_parameter(self.date_start)
-
             # === Ajustamos los parametros  ===
             transportation_allowance = parameters['transport_allowance']
             company_pension_percentage = parameters['company_pension_percentage']
@@ -120,15 +146,29 @@ class HrPayroll(models.Model):
             # === Vacia Los Totales Del Diccionario Con Cada Ciclo ===            
             totals = self._empty_totals()
 
+
             # === Calculo De Los Dias Trabajados ===
             totals = self.env['hr.payroll.mixin']._compute_days_worked(events, totals,  self.date_start, self.date_end)
 
+            # === Calculo De Los Eventos Sin Incapacidad
+            incapacity_types = ['sick_leave', 'unpaid_leave', 'arl_leave']
+            events_worked =  events.filtered(lambda e: e.type not in incapacity_types)
+            if events_worked:
+                for ev in events_worked:
+                    vals = ev._compute_value(totals['unpaid_days']) or {}
+                for k, v in vals.items():
+                    try:
+                        totals[k] = totals.get(k, 0.0) + float(v or 0.0)
+                    except Exception:
+                        pass
+
             # === Calculo del Salario segun incapacidades ===
             totals['wage_earned'] = contract.wage * (totals['days_worked'] / 30)
-
+            transport_base = totals['wage_earned'] + totals['other']
+            
             # === Calculo Auxilio De Transporte ===
             totals['transportation_allowance'] = self.env['hr.payroll.mixin']._compute_transport_allowance(
-                totals['wage_earned'], totals['days_worked'], minimun_wage, transportation_allowance
+                transport_base, totals['days_worked'], minimun_wage, transportation_allowance
             )
 
             # === Total A Pagar Al Trabajador ===
@@ -146,6 +186,10 @@ class HrPayroll(models.Model):
             )
 
             # === Aportes A Prestaciones Sociales (Prima, Cesantias, Vacaciones) ===
+            incapacity_types = ['unpaid_leave']
+            unpaid_events =  events.filtered(lambda e: e.type in incapacity_types)
+            ipdb.set_trace()
+
             totals = self.env['hr.payroll.mixin']._compute_benefits( totals)
 
             # === Totales De Aportes A Seguridad Social (Salud, Pension, ARL) ===
@@ -156,7 +200,6 @@ class HrPayroll(models.Model):
             totals['total_deductions'] = totals['deductions'] + totals['arl_contribution']
 
             # ========================
-
 
             # ========================
             # Crea Las Lineas Con La Informacion Recolectada
@@ -212,10 +255,100 @@ class HrPayroll(models.Model):
 
     # ========================
     # Genera Los Apuntes Contables
-    # ========================
+    # ========================    
     def action_generate_accounting_entries(self):
-        """Placeholder: evita error de validación hasta implementar la lógica contable."""
-        for record in self:
-            # No hace nada por ahora, solo evita el error en la vista.
-            pass 
+        """Crea o actualiza líneas contables totales de la nómina."""
+        for payroll in self:
+            payroll.account_line_ids.unlink()
+
+            accounts_model = self.env['hr.predetermined.accounts']
+            acc_config = accounts_model.search([('company_id', '=', self.env.company.id)], limit=1)
+            if not acc_config:
+                continue
+
+            # === Totales acumulados ===
+            
+            total_wages = sum(line.wage_earned for line in payroll.line_ids)
+            total_transport = sum(line.transportation_allowance for line in payroll.line_ids)
+            total_health = sum(line.health_contribution for line in payroll.line_ids)
+            total_pension = sum(line.pension_contribution for line in payroll.line_ids)
+            total_arl = sum(line.arl_contribution for line in payroll.line_ids)
+            total_net = sum(line.net for line in payroll.line_ids)
+
+            # === Creación de líneas contables ===
+            lines_vals = []
+
+            # === Sueldos ===
+            lines_vals.append({
+                'payroll_id': payroll.id,
+                'concept_name': 'Sueldos',
+                'account_id': acc_config.wage_account_debit.id,
+                'debit': total_wages,
+                'credit': 0.0,
+            })
+            lines_vals.append({
+                'payroll_id': payroll.id,
+                'concept_name': 'Sueldos Credito',
+                'account_id': acc_config.wage_account_credit.id,
+                'debit': total_wages,
+                'credit': 0.0,
+            })
+            
+            lines_vals.append({
+                'payroll_id': payroll.id,
+                'concept_name': 'Auxilio Transporte',
+                'account_id': acc_config.wage_account_debit.id,
+                'debit': total_transport,
+                'credit': 0.0,
+            })
+            lines_vals.append({
+                'payroll_id': payroll.id,
+                'concept_name': 'Cesantias',
+                'account_id': acc_config.wage_account_debit.id,
+                'debit': total_transport,
+                'credit': 0.0,
+            })
+            lines_vals.append({
+                'payroll_id': payroll.id,
+                'concept_name': 'Cesantias',
+                'account_id': acc_config.wage_account_debit.id,
+                'debit': total_transport,
+                'credit': 0.0,
+            })
+
+
+            lines_vals.append({
+                'payroll_id': payroll.id,
+                'concept_name': 'Aportes Salud',
+                'account_id': acc_config.health_account_credit.id,
+                'debit': 0.0,
+                'credit': total_health,
+            })
+            lines_vals.append({
+                'payroll_id': payroll.id,
+                'concept_name': 'Aportes Pensión',
+                'account_id': acc_config.pension_account_credit.id,
+                'debit': 0.0,
+                'credit': total_pension,
+            })
+            lines_vals.append({
+                'payroll_id': payroll.id,
+                'concept_name': 'Aportes ARL',
+                'account_id': acc_config.arl_account_credit.id,
+                'debit': 0.0,
+                'credit': total_arl,
+            })
+
+            # 3️⃣ Neto a pagar (Pasivo)
+            lines_vals.append({
+                'payroll_id': payroll.id,
+                'concept_name': 'Sueldos por pagar',
+                'account_id': acc_config.wage_account_credit.id,
+                'debit': 0.0,
+                'credit': total_net,
+            })
+
+            # Crear todas las líneas
+            self.env['hr.payroll.account.line'].create(lines_vals)
     # ========================
+    

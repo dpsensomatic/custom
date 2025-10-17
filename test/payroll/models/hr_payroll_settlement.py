@@ -1,36 +1,72 @@
-
-# ==========================
-# Modelo: Liquidación de Nómina
-# ==========================
 from odoo import fields, models, api
 from odoo.exceptions import UserError
 import ipdb
 
+# ========================
+# Definicion Del Modelo
+# ========================
 class HrPayrollSettlement(models.Model):
+    
+    # === Descripcion Del Modelo ===
     _name = 'hr.payroll.settlement'
     _description = 'Liquidación de Nómina'
 
-    employee_id = fields.Many2one('hr.employee', string="Empleado", required=True)
-    contract_id = fields.Many2one("hr.contract", string="Contrato", required=True)
-    line_ids = fields.One2many("hr.payroll.settlement.line", "liquidation_id", string="Líneas de Liquidación")
-
+    # === Campos Del Modelo (No Computados) ===
     name = fields.Char(string="Nombre de la liquidacion", required=True)
-    settlement_creation_date = fields.Date(string="Fecha de creacion de la liquidacion")
-    settlement_cutoff_date = fields.Date(string="Fecha de corte de la liquidacion")
     termination_reason = fields.Char(string="Causa de retiro ")
-    employee_identification_number = fields.Char(string="Numero de identificacion", compute='_compute_contract_fields', store=True)
+    creation_date = fields.Date(string="Fecha de creacion de la liquidacion")
+    cutoff_date = fields.Date(string="Fecha de corte de la liquidacion", required=True)
+    
+    # === Campos Del Modelo (Computados) === 
+    identification_number = fields.Char(string="Numero de identificacion", compute='_compute_contract_fields', store=True)
     contract_type = fields.Char(string="Tipo de contrato", compute='_compute_contract_fields', store=True)
     contract_start_date = fields.Date(string="Fecha inicio contrato", compute='_compute_contract_fields', store=True)
     contract_end_date = fields.Date(string="Fecha fin contrato", compute='_compute_contract_fields', store=True)
     job_position = fields.Char(string="Cargo", compute='_compute_contract_fields', store=True)
+    
+    # === Estado :3 ===
     state = fields.Selection([
         ('draft', 'Borrador'),
         ('done', 'Validado'),
         ('cancelled', 'Cancelado')
     ], string='Estado', default='draft', required=True)
+    
+    # === Campos Many ===
+    employee_id = fields.Many2one('hr.employee', string="Empleado", required=True)
+    contract_id = fields.Many2one("hr.contract", string="Contrato", required=True)
+    line_ids = fields.One2many("hr.payroll.settlement.line", "liquidation_id", string="Líneas de Liquidación")
+
+    
+    
+# ========================
+# Campos Computados
+# ========================
 
     # ========================
-    # Helpers pequeños
+    # Computa Los Campos Del Contrato
+    # ========================
+    @api.depends('employee_id')
+    def _compute_contract_fields(self):
+        for record in self:
+            employee = record.employee_id
+            contract = employee.contract_id if employee else False
+            record.contract_id = contract
+            record.contract_start_date = contract.date_start if contract else False
+            record.contract_end_date = contract.date_end if contract else False
+            record.identification_number = employee.identification_id if employee else False
+            record.contract_type = contract.contract_type_id.name if contract and contract.contract_type_id else False
+            record.job_position = contract.job_id.name if contract and contract.job_id else False
+    # ========================
+
+# ========================
+
+
+# ========================
+# Helpers Pequeños
+# ========================
+
+    # ========================
+    #  Vacia Los Totales Que Hayan En Los Diccionarios
     # ========================
     def _empty_totals(self):
         """Diccionario base con todas las claves que usamos.
@@ -47,79 +83,64 @@ class HrPayrollSettlement(models.Model):
             'advances': 0.0,
             'net_value': 0.0,
         }
+    # ========================
+    
+# ========================
 
-    @api.depends('employee_id')
-    def _compute_contract_fields(self):
-        for record in self:
-            employee = record.employee_id
-            contract = employee.contract_id if employee else False
-            record.contract_id = contract
-            record.contract_start_date = contract.date_start if contract else False
-            record.contract_end_date = contract.date_end if contract else False
-            record.employee_identification_number = employee.identification_id if employee else False
-            record.contract_type = contract.contract_type_id.name if contract and contract.contract_type_id else False
-            record.job_position = contract.job_id.name if contract and contract.job_id else False
 
-    @api.depends("contract_start_date", "settlement_cutoff_date", "absences_days")
-    def _compute_days(self):
-        for record in self:
-            if record.contract_start_date and record.settlement_cutoff_date:
-                total_days = (record.settlement_cutoff_date - record.contract_start_date).days + 1
+# ========================
+# Acciones Principales
+# ========================
 
-                # Aplica tope de 360 días
-                days_in_contract = min(total_days, 360)
-
-                # Días liquidados descontando ausencias
-                days_liquidated = max(0, days_in_contract - record.absences_days)
-
-                # Asignar resultados
-                record.days_in_contract = days_in_contract
-                record.days_liquidated = days_liquidated
-            else:
-                record.days_in_contract = 0
-                record.days_liquidated = 0
-                
+    # ========================
+    # Genera Las Lineas De La Liquidacion
+    # ========================
     def action_generate_settlement_lines(self):
-        """Genera las líneas según los conceptos predefinidos"""
-        lines = []
-        concepts = ['vacaciones', 'prima', 'cesantias', 'intereses_cesantias']
 
+        # === Se Crea El Diccionario Vacio Y Se Crean Los Conceptos Para Generar Las Lineas ===
+        lines = []
+        concepts = ['prima', 'cesantias', 'intereses_cesantias', 'vacaciones']
+
+        # === ===
         for concept in concepts:
             vals_line = self._get_line_vals(concept)
             if vals_line:
                 lines.append((0, 0, vals_line))
-
+                
+        # === ===
         self.line_ids = [(5, 0, 0)] + lines
+    # ========================
 
+
+    # ========================
+    # Devuelve La Informacion De Las Lineas
+    # ========================
     def _get_line_vals(self, concept):
-        """Devuelve el diccionario de valores por concepto"""
-        ipdb.set_trace()
+        
+        # === Trae Los Eventos Y Filtra Los De Tipo 'unpaid_leave' ===
+        events = self.env["hr.payroll.mixin"]._get_events(self.employee_id.id, self.contract_start_date, self.cutoff_date)
+        events = events.filtered(lambda e: e.type == 'unpaid_leave')
+        
+        # === ===
+        totals = self._empty_totals()
         contract = self.employee_id.contract_id
-        wage = contract.wage
-        days_period = (self.settlement_cutoff_date - contract.date_start).days + 1
-
-        # Cálculos base (ejemplo)
-        if concept == 'vacaciones':
-            value = wage * days_period / 720
-        elif concept == 'prima':
-            value = wage * days_period / 360
-        elif concept == 'cesantias':
-            value = wage * days_period / 360
-        elif concept == 'intereses_cesantias':
-            ces = wage * days_period / 360
-            value = ces * 0.12 * days_period / 360
-        else:
-            value = 0
-
+        totals['average_wage'] = contract.wage
+        totals = self.env["hr.payroll.mixin"]._compute_settlement_days(concept, events, self.contract_start_date, self.cutoff_date, totals)
+        
+        # === Calculo De Los Conceptos A Liquidar ===
+        totals = self.env['hr.payroll.mixin']._calculate_liquidated_wage(concept, totals)
         return {
             'concept': concept.replace('_', ' ').title(),
             'start_date': contract.date_start,
-            'end_date': self.settlement_cutoff_date,
-            'days_period': days_period,
-            'absences': 0,
-            'days_settlement': days_period,
-            'average_wage': wage,
-            'value_wage': value,
-            'advances': 0,
-            'net_value': value,
+            'end_date': self.cutoff_date,
+            'days_period': totals['days_period'],
+            'absences': totals['absences'],
+            'days_settlement': totals['days_settlement'],
+            'average_wage': totals['average_wage'],
+            'value_wage': totals['value_wage'],
+            'advances': totals['advances'],
+            'net_value': totals['net_value'],
         }
+    # ========================
+    
+# ========================    

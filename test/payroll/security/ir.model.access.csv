@@ -6,8 +6,9 @@ access_hr_parameters,hr.parameters,model_hr_parameters,base.group_user,1,1,1,1
 access_hr_accrued,hr.accrued,model_hr_accrued,base.group_user,1,1,1,1
 access_hr_payroll_settlement,hr.payroll_settlement,model_hr_payroll_settlement,base.group_user,1,1,1,1
 access_hr_payroll_settlement_line,hr.payroll_settlement_line,model_hr_payroll_settlement_line,base.group_user,1,1,1,1
+access_hr_predetermined_accounts,hr.predetermined_accounts,model_hr_predetermined_accounts,base.group_user,1,1,1,1
 access_hr_payroll_mixin,hr.payroll_mixin,model_hr_payroll_mixin,base.group_user,1,1,1,1
-
+access_hr_payroll_account_line,hr.payroll_account_line,model_hr_payroll_account_line,base.group_user,1,1,1,1
 
 
 

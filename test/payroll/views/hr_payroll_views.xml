@@ -14,83 +14,91 @@
         <field name="arch" type="xml">
             <form string="Nómina">
                 <header>
-                    <button name="action_generate_lines" type="object" string="Generar Líneas" class="oe_highlight"/>
-                    <button name="action_generate_accounting_entries" type="object" string="Generar Asientos" class="btn-primary"/>
+                    <button name="action_generate_lines" type="object" string="Generar Líneas"
+                        class="oe_highlight" />
+                    <button name="action_generate_accounting_entries" type="object"
+                        string="Generar Asientos" class="btn-primary" />
                 </header>
                 <sheet>
                     <group>
-                        <field name="name"/>
-                        <field name="date_start"/>
-                        <field name="date_end"/>
-                        <field name="state"/>
+                        <field name="name" />
+                        <field name="date_start" />
+                        <field name="date_end" />
+                        <field name="state" />
                     </group>
                     <notebook>
                         <page string="Líneas de Nómina">
                             <field name="line_ids">
                                 <list editable="bottom">
-                                    <field name="employee_id"/>
-                                    <field name="contract_id"/>
-                                    <field name="base_wage"/>
-                                    <field name="wage_earned"/>
-                                    <field name="days_worked"/>
-                                    <field name="sick_leave"/>
-                                    <field name="overtime_hours"/>
-                                    <field name="transportation_allowance"/>
-                                    <field name="night_surcharge"/>
-                                    <field name='other'/>
-                                    <field name="gross"/>
-                                    <field name="health_contribution"/>
-                                    <field name="pension_contribution"/>
-                                    <field name="company_health_contribution"/>
-                                    <field name="company_pension_contribution"/>
-                                    <field name="arl_contribution"/>
-                                    <field name='other_deductions'/>
-                                    <field name="deductions"/>
-                                    <field name="total_deductions"/>
-                                    <field name="service_bonus"/>
-                                    <field name="severance"/>
-                                    <field name="interest_on_severance"/>
-                                    <field name="vacations"/>
-                                    <field name="total_provisions"/>
-                                    <field name="net"/>
-                                    <field name="total_net"/>
+                                    <field name="employee_id" />
+                                    <field name="contract_id" />
+                                    <field name="base_wage" />
+                                    <field name="wage_earned" />
+                                    <field name="days_worked" />
+                                    <field name="sick_leave" />
+                                    <field name="overtime_hours" />
+                                    <field name="transportation_allowance" />
+                                    <field name="night_surcharge" />
+                                    <field name='other' />
+                                    <field name="gross" />
+                                    <field name="health_contribution" />
+                                    <field name="pension_contribution" />
+                                    <field name="company_health_contribution" />
+                                    <field name="company_pension_contribution" />
+                                    <field name="arl_contribution" />
+                                    <field name='other_deductions' />
+                                    <field name="deductions" />
+                                    <field name="total_deductions" />
+                                    <field name="service_bonus" />
+                                    <field name="severance" />
+                                    <field name="interest_on_severance" />
+                                    <field name="vacations" />
+                                    <field name="total_provisions" />
+                                    <field name="net" />
+                                    <field name="total_net" />
                                 </list>
                                 <form>
                                     <group>
-                                    <field name="employee_id"/>
-                                    <field name="contract_id"/>
-                                    <field name="base_wage"/>
-                                    <field name="wage_earned"/>
-                                    <field name="days_worked"/>
-                                    <field name="sick_leave"/>
-                                    <field name="overtime_hours"/>
-                                    <field name="transportation_allowance"/>
-                                    <field name="night_surcharge"/>
-                                    <field name='other'/>
-                                    <field name="gross"/>
-                                    <field name="health_contribution"/>
-                                    <field name="pension_contribution"/>
-                                    <field name="company_health_contribution"/>
-                                    <field name="company_pension_contribution"/>
-                                    <field name="arl_contribution"/>
-                                    <field name='other_deductions'/>
-                                    <field name="deductions"/>
-                                    <field name="total_deductions"/>
-                                    <field name="service_bonus"/>
-                                    <field name="severance"/>
-                                    <field name="interest_on_severance"/>
-                                    <field name="vacations"/>
-                                    <field name="total_provisions"/>
-                                    <field name="net"/>
-                                    <field name="total_net"/>
+                                        <field name="employee_id" />
+                                        <field name="contract_id" />
+                                        <field name="base_wage" />
+                                        <field name="wage_earned" />
+                                        <field name="days_worked" />
+                                        <field name="sick_leave" />
+                                        <field name="overtime_hours" />
+                                        <field name="transportation_allowance" />
+                                        <field name="night_surcharge" />
+                                        <field name='other' />
+                                        <field name="gross" />
+                                        <field name="health_contribution" />
+                                        <field name="pension_contribution" />
+                                        <field name="company_health_contribution" />
+                                        <field name="company_pension_contribution" />
+                                        <field name="arl_contribution" />
+                                        <field name='other_deductions' />
+                                        <field name="deductions" />
+                                        <field name="total_deductions" />
+                                        <field name="service_bonus" />
+                                        <field name="severance" />
+                                        <field name="interest_on_severance" />
+                                        <field name="vacations" />
+                                        <field name="total_provisions" />
+                                        <field name="net" />
+                                        <field name="total_net" />
                                     </group>
                                 </form>
                             </field>
                         </page>
-                        <page string="Totales">
-                            <group>
-                                <!-- Aqui ira informacion adicional importante -->
-                            </group>
+                        <page string="Cuentas Contables">
+                            <field name="account_line_ids" nolabel="1">
+                                <list editable="bottom">
+                                    <field name="concept_name" />
+                                    <field name="account_id" />
+                                    <field name="debit" />
+                                    <field name="credit" />
+                                    <field name="note" />
+                                </list>
+                            </field>
                         </page>
                     </notebook>
                 </sheet>
@@ -104,14 +112,15 @@
         <field name="model">hr.payroll</field>
         <field name="arch" type="xml">
             <list>
-                <field name="name"/>
-                <field name="date_start"/>
-                <field name="date_end"/>
+                <field name="name" />
+                <field name="date_start" />
+                <field name="date_end" />
             </list>
         </field>
     </record>
 
     <!-- Menu Item -->
-    <menuitem name="Devengados" id="payroll.accruals" parent="payroll.payroll" action='action_hr_payroll' sequence='1'/>
+    <menuitem name="Devengados" id="payroll.accruals" parent="payroll.payroll"
+        action='action_hr_payroll' sequence='1' />
 
 </odoo>

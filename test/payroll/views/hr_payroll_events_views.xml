@@ -17,10 +17,11 @@
                         <field name='employee_id'/>
                         <field name='contract_id'/>
                         <field name='type'/>
+                        <field name="fixed_value" invisible="type != 'commissions'"/>
                         <field name='date'/>
-                        <field name='quantity'/>
-                        <field name='date_end'/>
-                        <field name='unit'/>
+                        <field name='quantity' invisible="type in ['commissions', 'bounties']"/>
+                        <field name='date_end' invisible="type in ['commissions', 'bounties']"/>
+                        <field name='unit' invisible="type in ['commissions', 'bounties']"/>
                     </group>
                 </sheet>
             </form>
