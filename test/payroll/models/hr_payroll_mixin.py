@@ -113,15 +113,10 @@ class HrPayrollMixin(models.AbstractModel):
         
         # === Se Seccionan Las Fechas Y Se Traen Los Totales De Dias De Incapacidad ===
         split_dates = self._split_event_dates(events, date_start, date_end)
-        totals['unpaid_days'] = self._compute_all_unpaid_days(split_dates, totals)
+        totals['unpaid_days'] = self._compute_all_unpaid_days(split_dates)
         
         # === Se Ajustan Los Dias Trabajados Segun Los Dias Del Mes === 
-        if split_dates[0]['d1'].month == 2 and totals['unpaid_days'] > 15:
-            totals['days_worked'] = 28.0 - totals['unpaid_days']
-        elif split_dates[0]['d2'].day == 31 and totals['unpaid_days'] > 15:
-            totals['days_worked'] = 31.0 - totals['unpaid_days']
-        else:
-            totals['days_worked'] = 30.0 - totals['unpaid_days']
+        totals['days_worked']= self._adjust_days_worked(split_dates, totals['unpaid_days'])
 
         # === Recorre Los Eventos Trayendo Los Valores Segun Incapacidades ===
         for ev, split in zip(events, split_dates):
@@ -188,11 +183,11 @@ class HrPayrollMixin(models.AbstractModel):
     # Recibe los parametros anuales y retorna los totales de las prestaciones sociales
     # ========================
     @api.model
-    def _compute_benefits(self, totals):
-        totals['service_bonus'] = totals['gross'] * (totals['days_worked'] / 360)
-        totals['severance'] = totals['gross'] * (totals['days_worked'] / 360)
-        totals['interest_on_severance'] = totals['severance'] * 0.12 * (totals['days_worked'] / 360)
-        totals['vacations'] = totals['wage_earned'] *0.0417
+    def _compute_benefits(self, totals, days_worked):
+        totals['service_bonus'] = totals['gross'] * (days_worked / 360)
+        totals['severance'] = totals['gross'] * (days_worked / 360)
+        totals['interest_on_severance'] = totals['severance'] * 0.12 * (days_worked / 360)
+        totals['vacations'] = totals['gross_without_transport'] *0.0417
         totals['total_provisions'] = totals['service_bonus'] + totals['severance'] + totals['interest_on_severance'] + totals['vacations']
         return totals
     # ========================  
@@ -210,7 +205,13 @@ class HrPayrollMixin(models.AbstractModel):
         # === Trae El Total De Dias Laborales ===
         if concept == 'prima':
             start_date_prima = date(2025,7,1)
-            totals['days_period'] = self._calculate_total_settlement_days(start_date_prima, end_date)
+            if start_date_prima >= start_date:
+                totals['days_period'] = self._calculate_total_settlement_days(start_date_prima, end_date)
+            else:
+                d1 = fields.Date.from_string(start_date)
+                p1 = fields.Date.from_string(start_date_prima)
+                overlap_start = max(p1, d1)
+                totals['days_period'] = self._calculate_total_settlement_days(overlap_start, end_date)
         else:
             totals['days_period'] = self._calculate_total_settlement_days(start_date, end_date)
         
@@ -330,12 +331,27 @@ class HrPayrollMixin(models.AbstractModel):
     # ========================
     # Computa El Total De Los Dias De Incapacidad
     # ========================
-    def _compute_all_unpaid_days(self, split_dates, totals):
+    def _compute_all_unpaid_days(self, split_dates):
+        totals = 0
         for split in split_dates:
             unpaid_days = split['o2'].day - split['o1'].day + 1
-            totals['unpaid_days'] = totals.get('unpaid_days', 0) + unpaid_days
-            
-        return totals['unpaid_days']
+            totals +=  unpaid_days
+
+        return totals
+    # ========================
+    
+    
+    # ========================
+    # Adjusta Los Dias  Trabajados Segun La Cantidad De Dias Del Mes
+    # ========================    
+    def _adjust_days_worked(self, split_dates, unpaid_days):
+        if split_dates[0]['d1'].month == 2 and unpaid_days > 15:
+            days_worked = 28.0 - unpaid_days
+        elif split_dates[0]['d2'].day == 31 and unpaid_days > 15:
+            days_worked = 31.0 - unpaid_days
+        else:
+            days_worked = 30.0 - unpaid_days
+        return days_worked
     # ========================
     
     

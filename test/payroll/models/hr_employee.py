@@ -12,3 +12,4 @@ class HrEmployee(models.Model):
     cotizante_type = fields.Many2one(
         "hr.cotizante.type", string="Tipo de Cotizante")
     contract_type = fields.Many2one("hr.contract.type", string="Contract Type")
+    eps_type = fields.Many2one("account.account", string="Eps del empleado")

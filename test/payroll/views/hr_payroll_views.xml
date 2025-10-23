@@ -94,8 +94,8 @@
                                 <list editable="bottom">
                                     <field name="concept_name" />
                                     <field name="account_id" />
-                                    <field name="debit" />
-                                    <field name="credit" />
+                                    <field name="debit" sum="Total Débito"/>
+                                    <field name="credit" sum="Total Crédito"/>
                                     <field name="note" />
                                 </list>
                             </field>

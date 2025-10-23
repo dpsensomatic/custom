@@ -6,6 +6,7 @@
     <field name="arch" type="xml">
       <xpath expr='//field[@name="invoice_user_id"]' position="after">
         <field name='invoice_level_tax_ids'/>
+        <field name='global_discount'/>
       </xpath>
     </field>
   </record>

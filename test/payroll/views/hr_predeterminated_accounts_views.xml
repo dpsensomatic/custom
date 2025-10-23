@@ -28,7 +28,7 @@
                     </group>
                     <group string='Aportes A Seguridad Social'>
                         <field name="health_account_debit" />
-                        <field name="pension_account_credit" />
+                        <field name="pension_account_debit" />
                         <field name="arl_account_debit" />
                         <field name="box_account_debit" />
                     </group>
