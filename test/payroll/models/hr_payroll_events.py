@@ -110,7 +110,7 @@ class HrPayrollEvents(models.Model):
                     'unpaid_days': 0.0,
                     'sick_leave': 0.0, 
                     'overtime_hours': 0.0,
-                    'night_surcharge': 0.0,
+                    'commissions': 0.0,
                     'other': 0.0
                     }
     # =========================
@@ -139,7 +139,7 @@ class HrPayrollEvents(models.Model):
                     'unpaid_days': 0.0,
                     'sick_leave': 0.0, 
                     'overtime_hours': 0.0,
-                    'night_surcharge': 0.0,
+                    'commissions': 0.0,
                     'other': 0.0
                     }
         # ========================
@@ -157,7 +157,7 @@ class HrPayrollEvents(models.Model):
             result["overtime_hours"] = unpaid_days * hour_wage * 2.0
         
         elif self.type == "commissions":
-            result["other"] = self.fixed_value or 0.0
+            result["commissions"] = self.fixed_value or 0.0
         
         # === sick_leave = Incapacidades de otro tipo ===
         elif self.type == "sick_leave":
@@ -193,7 +193,7 @@ class HrPayrollEvents(models.Model):
             
         # === Recargo nocturno ===
         elif self.type == "night_surcharge":
-            result["night_surcharge"] = unpaid_days * hour_wage *  0.35
+            result["other"] = unpaid_days * hour_wage *  0.35
             
         # === retorna los valores conseguidos en las novedades ===
         return result

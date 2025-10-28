@@ -13,6 +13,7 @@
                     <group string="Cuentas Debito">
 
                     <group string='Cuentas Generales Nómina'>
+                        <field name="rounding_debit" />
                         <field name="wage_account_debit" />
                         <field name="withholding_tax_account_debit" />
                     </group>
@@ -42,6 +43,7 @@
                     <group string="Cuentas Credito">
                     
                     <group string='Cuentas Generales Nómina'>
+                        <field name="rounding_credit" />
                         <field name="wage_account_credit" />
                         <field name="withholding_tax_account_credit" />
                     </group>

@@ -20,6 +20,11 @@ class HrPredeterminedAccounts(models.Model):
     )
 
 # === Campos Del Modelo ===
+
+  # === Redondeo De decimales ===
+    rounding_debit = fields.Many2one("account.account", string="Cuenta Sueldos Debito")
+    rounding_credit = fields.Many2one("account.account", string="Cuenta Sueldos Credito")
+
   # === Sueldos Nomina ===   
     wage_account_debit = fields.Many2one("account.account", string="Cuenta Sueldos Debito")
     wage_account_credit = fields.Many2one("account.account", string="Cuenta Sueldos Credito")

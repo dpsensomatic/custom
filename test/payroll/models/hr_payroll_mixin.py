@@ -1,7 +1,10 @@
 from odoo import models, api, fields, _
 from odoo.exceptions import UserError
 from datetime import date
+import logging
 import ipdb
+_logger = logging.getLogger(__name__)
+
 
 # ========================
 # Modelo Base Para Calculos/Funciones
@@ -29,6 +32,7 @@ class HrPayrollMixin(models.AbstractModel):
             raise UserError(f"No hay empleados con contrato activo en el rango de fechas {date_start}- {date_end}")
     
         result = {}
+        skipped = []
         for emp in employees:
             contract = self.env['hr.contract'].search([
                 ('employee_id', '=', emp.id),
@@ -38,10 +42,17 @@ class HrPayrollMixin(models.AbstractModel):
                 ('date_end', '=', False)
             ], limit=1)
     
-            if not contract:
-                raise UserError(f"El empleado {emp.name} no tiene contrato activo en el rango {date_start} - {date_end}")
-    
-            result[emp] = contract
+            # if not contract:
+            #     raise UserError(f"El empleado {emp.name} no tiene contrato activo en el rango {date_start} - {date_end}")
+            if contract:
+                result[emp] = contract
+            else:
+                # En modo pruebas: solo lo omite, no interrumpe
+                skipped.append(emp.name)
+
+            # Log informativo (no interrumpe la ejecución)
+            if skipped:
+                _logger.warning(f"Empleados sin contrato en el rango {date_start} - {date_end}: {', '.join(skipped)}")
     
         return result
     # ========================  
@@ -142,7 +153,7 @@ class HrPayrollMixin(models.AbstractModel):
     # Retorna El total A Pagar Para El Trabajador
     # ========================
     def _compute_total_gross(self, totals):
-            totals= totals['wage_earned'] + totals['sick_leave'] + totals['overtime_hours'] + totals['night_surcharge'] + totals['other'] + totals['transportation_allowance']
+            totals= totals['wage_earned'] + totals['sick_leave'] + totals['overtime_hours'] + totals['commissions'] + totals['other'] + totals['transportation_allowance']
             return totals
     # ========================
     
@@ -187,7 +198,7 @@ class HrPayrollMixin(models.AbstractModel):
         totals['service_bonus'] = totals['gross'] * (days_worked / 360)
         totals['severance'] = totals['gross'] * (days_worked / 360)
         totals['interest_on_severance'] = totals['severance'] * 0.12 * (days_worked / 360)
-        totals['vacations'] = totals['gross_without_transport'] *0.0417
+        totals['vacations'] = totals['parafiscal_base'] *0.0417
         totals['total_provisions'] = totals['service_bonus'] + totals['severance'] + totals['interest_on_severance'] + totals['vacations']
         return totals
     # ========================  

@@ -21,6 +21,7 @@ class HrPayroll(models.Model):
     name = fields.Char(string="Nombre", required=True, default="Nómina")
     date_start = fields.Date(string="Fecha inicio", required=True)
     date_end = fields.Date(string="Fecha fin", required=True)
+    line_vals = fields.Char(string="Lineas De Contabilidad")
     state = fields.Selection([
         ('draft', 'Borrador'),
         ('confirmed', 'Confirmada'),
@@ -52,7 +53,18 @@ class HrPayroll(models.Model):
         store=True,
         readonly=True
     )
-    
+    move_id = fields.Many2one(
+        'account.move', 
+        string='Asiento contable', 
+        readonly=True, 
+        copy=False
+        )
+    employee_selector_id = fields.Many2one(
+        'hr.employee',
+        string='Consultar por empleado',
+        help='Selecciona un empleado vigente en este periodo de nómina.'
+    )    
+
 # ========================
     
     
@@ -75,9 +87,9 @@ class HrPayroll(models.Model):
                 'sick_leave': 0.0,
                 'overtime_hours': 0.0,
                 'transportation_allowance': 0.0,
-                'night_surcharge': 0.0,
+                'commissions': 0.0,
                 'other':0.0,
-                'gross_without_transport': 0.0,
+                'parafiscal_base': 0.0,
                 'gross': 0.0,
                 
                 # === Aportes A Seguridad Social ===
@@ -165,8 +177,8 @@ class HrPayroll(models.Model):
 
             # === Calculo del Salario segun incapacidades ===
             totals['wage_earned'] = contract.wage * (totals['days_worked'] / 30)
-            totals['gross_without_transport'] = totals['wage_earned']
-            transport_base = totals['wage_earned'] + totals['other']
+            totals['parafiscal_base'] = totals['wage_earned'] + totals['commissions'] + totals['overtime_hours']
+            transport_base = totals['parafiscal_base'] 
             
             # === Calculo Auxilio De Transporte ===
             totals['transportation_allowance'] = self.env['hr.payroll.mixin']._compute_transport_allowance(
@@ -208,6 +220,7 @@ class HrPayroll(models.Model):
             # === Totales De Aportes A Seguridad Social (Salud, Pension, ARL) ===
             # Total A Pagar Trabajador
             totals['deductions'] = totals['health_contribution'] + totals['pension_contribution']
+            
 
             # Total A Pagar Empleador
             totals['total_deductions'] = totals['deductions'] + totals['arl_contribution']
@@ -229,7 +242,7 @@ class HrPayroll(models.Model):
                 'sick_leave': totals['sick_leave'],
                 'overtime_hours': totals['overtime_hours'],
                 'transportation_allowance': totals['transportation_allowance'],
-                'night_surcharge': totals['night_surcharge'],
+                'commissions': totals['commissions'],
                 'other': totals['other'],
                 'gross': totals['gross'],
 
@@ -264,7 +277,6 @@ class HrPayroll(models.Model):
         # ===  ===
         self.line_ids = [(5, 0, 0)] + lines
 
-    # ========================
 
     # ========================
     # Genera Los Apuntes Contables
@@ -278,69 +290,48 @@ class HrPayroll(models.Model):
             acc_config = accounts_model.search([('company_id', '=', self.env.company.id)], limit=1)
             if not acc_config:
                 continue
-
+            ipdb.set_trace()
             # === Totales acumulados ===
-            wages_debit = sum(line.wage_earned for line in payroll.line_ids)
-            wages_credit = sum(line.wage_earned for line in payroll.line_ids) # No se Que Calculo Se Pone Aqui
-            incapacity  = sum(line.sick_leave for line in payroll.line_ids) 
-            transport = sum(line.transportation_allowance for line in payroll.line_ids) 
-            
+            wages_debit = self.currency_id.round(sum(line.wage_earned for line in payroll.line_ids))#check
+            wages_credit = self.currency_id.round(sum(line.net for line in payroll.line_ids)) #check
+            commissions = self.currency_id.round(sum(line.commissions for line in payroll.line_ids)) #check
+            incapacity  = self.currency_id.round(sum(line.sick_leave for line in payroll.line_ids))  #check
+            transport = self.currency_id.round(sum(line.transportation_allowance for line in payroll.line_ids)) #check
+
             # === Seguridad Social ===
-            health_debit = sum(line.company_health_contribution for line in payroll.line_ids)
-            health_credit = sum(line.health_contribution for line in payroll.line_ids)
-            pension_debit = sum(line.company_pension_contribution for line in payroll.line_ids) 
-            pension_credit = sum(line.pension_contribution for line in payroll.line_ids)
-            arl_debit = sum(line.arl_contribution for line in payroll.line_ids) 
-            arl_credit = sum(line.arl_contribution for line in payroll.line_ids) #  No se que debo poner aqui
+            health_debit = self.currency_id.round(sum(line.company_health_contribution for line in payroll.line_ids)) #check
+            health_credit = self.currency_id.round(sum(line.health_contribution for line in payroll.line_ids)) #check
+            pension_debit = self.currency_id.round(sum(line.company_pension_contribution for line in payroll.line_ids)) #check
+            pension_credit = self.currency_id.round(sum(payroll.line_ids.mapped('pension_contribution')) + sum(payroll.line_ids.mapped('company_pension_contribution'))) #check
+            arl_debit = self.currency_id.round(sum(line.arl_contribution for line in payroll.line_ids)) #check
+            arl_credit = self.currency_id.round(sum(line.arl_contribution for line in payroll.line_ids)) #check
             
             # === Beneficios ===
-            service_bonus_debit = sum(line.service_bonus for line in payroll.line_ids)
-            service_bonus_credit = sum(line.arl_contribution for line in payroll.line_ids) # Verificar que si se deba poner lo mismo exactamente
-            severance_debit = sum(line.severance for line in payroll.line_ids)
-            severance_credit = sum(line.severance for line in payroll.line_ids) # Verificar que si se deba poner lo mismo exactamente
-            interest_debit = sum(line.interest_on_severance for line in payroll.line_ids)
-            interest_credit = sum(line.interest_on_severance for line in payroll.line_ids) # Verificar que si se deba poner lo mismo exactamente
-            vacations_debit = sum(line.vacations for line in payroll.line_ids)
-            vacations_credit = sum(line.vacations for line in payroll.line_ids) # Verificar que si se deba poner lo mismo exactamente
+            service_bonus_debit = self.currency_id.round(sum(line.service_bonus for line in payroll.line_ids)) #check
+            service_bonus_credit = self.currency_id.round(sum(line.service_bonus for line in payroll.line_ids)) #check
+            severance_debit = self.currency_id.round(sum(line.severance for line in payroll.line_ids)) #check
+            severance_credit = self.currency_id.round(sum(line.severance for line in payroll.line_ids)) #check
+            interest_debit = self.currency_id.round(sum(line.interest_on_severance for line in payroll.line_ids)) #check
+            interest_credit = self.currency_id.round(sum(line.interest_on_severance for line in payroll.line_ids)) #check
+            vacations_debit = self.currency_id.round(sum(line.vacations for line in payroll.line_ids)) #check
+            vacations_credit = self.currency_id.round(sum(line.vacations for line in payroll.line_ids)) #check
 
-            fields_map = {
-                'debit': [
-                    # === Sueldos ===
-                    'wages_debit', 
-                    'incapacity', 
-                    'transport',
-                    
-                    # === Aportes ===
-                    'health_debit',
-                    'pension_debit',
-                    'arl_debit', 
-                    
-                    # === Beneficios ===
-                    'service_bonus_debit',
-                    'severance_debit','interest_debit',
-                    'vacations_debit',
-                ],
-                'credit': [
-                    # === Sueldos ===
-                    'wages_credit', 
-                    
-                    # === Aportes ===
-                    'health_credit',
-                    'pension_credit',
-                    'arl_credit', 
-                    
-                    # === Beneficios ===
-                    'service_bonus_credit',
-                    'severance_credit','interest_credit',
-                    'vacations_credit',
-                ],
-            }
-
-
+            # wages_debit 
+            # commissions
+            # incapacity
+            # transport
+            # health_debit
+            # pension_debit
+            
+            # wages_credit
+            # pension_credit
+            # health_credit
             
             # === Creación de líneas contables ===
             lines_vals = []
-            
+    # ========================
+    # Crea La Tabla Con Los Valores En La Nómina 
+    # ========================
         # ========================
         #  Beneficios Credito
         # ========================
@@ -389,6 +380,13 @@ class HrPayroll(models.Model):
                 'concept_name': 'Sueldos Debito',
                 'account_id': acc_config.wage_account_debit.id,
                 'debit': wages_debit,
+                'credit': 0.0,
+            })
+            lines_vals.append({
+                'payroll_id': payroll.id,
+                'concept_name': 'Comisiones',
+                'account_id': acc_config.commission_account_debit.id,
+                'debit': commissions,
                 'credit': 0.0,
             })
             lines_vals.append({
@@ -515,15 +513,90 @@ class HrPayroll(models.Model):
                 'debit': 0.0,
                 'credit': arl_credit,
             })
-        # ========================        
-            ipdb.set_trace()
-            totals = {
-                'debit': sum(line['debit'] for line in lines_vals),
-                'credit': sum(line['credit'] for line in lines_vals),
-            }
+        # ========================    
+        
+            # === Ajuste por redondeo de decimales ===
+            total_debit = sum(line['debit'] for line in lines_vals)
+            total_credit = sum(line['credit'] for line in lines_vals)
+            difference = round(total_debit - total_credit, 2)
+
+            if abs(difference) >= 0.01:
+                # Determina si hay más débito o crédito
+                adjust_type = 'debit' if difference < 0 else 'credit'
+                adjust_value = abs(difference)
+                ipdb.set_trace()
+                # Añade línea de ajuste al diario para cuadrar el asiento
+                lines_vals.append({
+                    'payroll_id': payroll.id,
+                    'concept_name': 'Ajuste por redondeo',
+                    'account_id': acc_config.rounding_credit.id or acc_config.rounding_debit.id,
+                    'debit': adjust_value if adjust_type == 'debit' else 0.0,
+                    'credit': adjust_value if adjust_type == 'credit' else 0.0,
+                })   
+    # ========================
+        
+    # ========================
+    # Genera El Asiento Contable En La Base De Datos De Odoo
+    # ========================
+            # === Trae Los Campos Existentes Dentro De 'account.move.line' ===
+            valid_fields = self.env['account.move.line']._fields.keys()
             
+            # === Deja Solo Los Campos Necesarios Para La Creacion Del Asiento ===
+            clean_lines_vals = []
+            for line in lines_vals:
+                clean_line = {k: v for k, v in line.items() if k in valid_fields}
+                clean_lines_vals.append((0, 0, clean_line))
+                
+            # === Aplica El Diario Donde Se Almacenara El Asiento Contable ===
+            journal = self.env['account.journal'].search([('type', '=', 'general'), ('name', 'ilike', 'Nomina')], limit=1) 
+            if not journal:
+                raise UserError("Debe crear un diario en facturacion de tipo varios y nombre Nomina.")
+            
+            # === Ajusta El Movimiento Contable y Le Asigna Un Nombre General, Fecha Y El Diario ===
+            move_vals = {
+                'ref': payroll.name,
+                'date': payroll.date_end,
+                'journal_id': journal.id,
+                'line_ids': clean_lines_vals,
+            }
+
             ipdb.set_trace()
+            # === Llama La Funcion Encargada De Crear Los Asientos Contables ===
+            move = self.env['account.move'].create(move_vals)
+            move.action_post()
+            self.line_vals = lines_vals
+            payroll.move_id = move.id
             # Crear todas las líneas
             self.env['hr.payroll.account.line'].create(lines_vals)
     # ========================
+
+    def action_filter_by_employee(self):
+        self.ensure_one()
+        if not self.employee_selector_id:
+            raise UserError("Por favor selecciona un empleado antes de consultar.")
     
+        # Borramos las líneas previas
+        self.account_line_ids.unlink()
+    
+        # Recalculamos solo para ese empleado
+        employee_lines = self.line_ids.filtered(lambda l: l.employee_id == self.employee_selector_id)
+        if not employee_lines:
+            raise UserError("No hay líneas de nómina para el empleado seleccionado en este periodo.")
+        ipdb.set_trace()
+        lines_vals = []
+        for line in employee_lines:
+            # Aquí puedes usar la misma lógica contable de tu función global
+            # pero restringida solo a ese empleado
+            vals = {
+                'payroll_id': self.id,
+                'employee_id': line.employee_id.id,
+                'concept_name': 'Neto a pagar',  # Ejemplo
+                'account_id': line.contract_id.account_id.id if line.contract_id.account_id else False,
+                'debit': line.net if line.net > 0 else 0.0,
+                'credit': 0.0,
+                'note': f"Asiento individual de {line.employee_id.name}",
+            }
+            lines_vals.append(vals)
+    
+        # Creamos las líneas filtradas
+        self.env['hr.payroll.account.line'].create(lines_vals)

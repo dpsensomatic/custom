@@ -18,7 +18,7 @@ class HrPayrollLine(models.Model):
     # Devengados (ingresos adicionales)
     sick_leave = fields.Float(string="Incapacidad")  # valor por incapacidad
     overtime_hours = fields.Float(string="Horas Extras")  # horas extras
-    night_surcharge = fields.Float(string="Recargo Nocturno")  # recargo nocturno
+    commissions = fields.Float(string="Comisiones")  # Comisiones
     other = fields.Float(string="Otros devengados")  # otros ingresos
     gross = fields.Float(string="Total Devengados", store=True)
 
