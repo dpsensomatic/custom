@@ -20,6 +20,19 @@
                     <group name="yearly_benefits" />
                 </group>
             </xpath>
+            <xpath expr="//group[@name='contract_details_0']" position="inside">
+                <group string='Seguridad Social'>
+                    <field name="eps_id"/>
+                    <field name="pension_fund_id"/>
+                    <field name="arl_id"/>
+                    <field name="compensation_check"/>
+                    <field name="compensation_fund_id"/>
+                </group>
+                <group string='SENA'>
+                    <field name='sena_apprentice'/>
+                    <field name='apprentice_type'/>
+                </group>
+            </xpath>
         </field>
     </record>
 </odoo>

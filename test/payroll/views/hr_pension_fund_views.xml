@@ -1,0 +1,47 @@
+<odoo>
+
+    <!-- Form -->
+    <record id="view_hr_pension_fund_form" model="ir.ui.view">
+        <field name="name">hr.pension.fund.form</field>
+        <field name="model">hr.pension.fund</field>
+        <field name="arch" type="xml">
+            <form>
+                <group string="Configurar Fondo de pension">
+                    <field name="name" />
+                    <field name="code" />
+                    <field name="phone" />
+                    <field name="address" />
+                    <field name="pension_account" />
+                    <field name="active" />
+                </group>
+            </form>
+        </field>
+    </record>
+
+    <!-- List -->
+    <record id="view_hr_pension_fund_list" model="ir.ui.view">
+        <field name="name">hr.pension.fund.list</field>
+        <field name="model">hr.pension.fund</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name" />
+                <field name="code" />
+                <field name="phone" />
+                <field name="address" />
+                <field name="pension_account" />
+                <field name="active" />
+            </list>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_hr_pension_fund" model="ir.actions.act_window">
+        <field name="name">Fondo de pension</field>
+        <field name="res_model">hr.pension.fund</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- Menu -->
+    <menuitem id="menu_hr_pension_fund" name="Configurar Fondo de pension"
+        parent="payroll.contributions" action="action_hr_pension_fund" />
+</odoo>

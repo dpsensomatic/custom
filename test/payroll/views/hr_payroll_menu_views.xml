@@ -21,6 +21,7 @@
     <menuitem name="Empleado" id="payroll.employee" parent="payroll_menu_root" /> 
     <menuitem name="Nómina" id="payroll.payroll" parent="payroll_menu_root" />
     <menuitem name="Reportes" id="payroll.reports" parent="payroll_menu_root" />
+    <menuitem name="Aportes" id="payroll.contributions" parent="payroll_menu_root" />
     <menuitem name="Configuracion" id="payroll.configuration" parent="payroll_menu_root" />
     <!-- <menuitem name="Recibos de nomina" id="payroll.payroll_receipts" parent="payroll_menu_root"
     />-->

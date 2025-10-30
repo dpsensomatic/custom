@@ -1,4 +1,4 @@
-from odoo import models, fields
+from odoo import models, fields, api
 
 # ========================
 # Definicion Del Modelo
@@ -20,12 +20,13 @@ class HrPayrollAccountLine(models.Model):
     
     
     # === Campos Monetary === 
-    debit = fields.Monetary(string="Débito", currency_field="currency_id", default=0.0)
-    credit = fields.Monetary(string="Crédito", currency_field="currency_id", default=0.0)
+    debit = fields.Monetary( currency_field="currency_id")
+    credit = fields.Monetary( currency_field="currency_id")
+    debit_float = fields.Float(string="Débito", compute="_compute_float_values", store=False)
+    credit_float = fields.Float(string="Crédito", compute="_compute_float_values", store=False)
     
     
     # === Campos Char ===
-    note = fields.Char(string="Nota")
     concept_name = fields.Char(string="Concepto")
     
     
@@ -35,3 +36,9 @@ class HrPayrollAccountLine(models.Model):
     employee_id = fields.Many2one("hr.employee", string="Empleado")
     
 # ========================
+
+    @api.depends('debit', 'credit')
+    def _compute_float_values(self):
+        for rec in self:
+            rec.debit_float = rec.debit
+            rec.credit_float = rec.credit

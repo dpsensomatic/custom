@@ -11,7 +11,6 @@ class HrContract(models.Model):
     # ==========================
     # Campos Del Modelo
     # ==========================
-    compensation_box = fields.Boolean(string='Caja de compensación', required=True)
     arl_fee = fields.Selection([
         ('i', 'I 0.522%'),
         ('ii', 'II 1.044%'),
@@ -19,6 +18,37 @@ class HrContract(models.Model):
         ('iv', 'IV 4.350%'),
         ('v', 'V 6.960%'),
     ], string='Tarifa ARL', default='i', required=True)
+    
+    # === Aportes ===
+    
+    eps_id = fields.Many2one(
+        'hr.eps.entity',
+        string='EPS',
+        help='Entidad promotora de salud del empleado'
+    )
+    pension_fund_id = fields.Many2one(
+        'hr.pension.fund',
+        string='Fondo de Pensión'
+    )
+    arl_id= fields.Many2one(
+        'hr.arl.entity',
+        string='ARL',
+        help='Entidad promotora de seguridad del empleado'
+    )
+    
+    compensation_check = fields.Boolean(string='Caja de compensación')
+    compensation_fund_id = fields.Many2one(
+        'hr.compensation.fund',
+        string='Caja de Compensación Familiar'
+    )
+    
+    
+    # === Tipo De Vinculacion
+    sena_apprentice = fields.Boolean(string='Aprendiz Sena')
+    apprentice_type = fields.Selection([
+        ('academic','Etapa Lectiva'),
+        ('productive','Etapa Productiva')
+    ], string='Etapa del aprendiz')
     # ==========================
     
     
