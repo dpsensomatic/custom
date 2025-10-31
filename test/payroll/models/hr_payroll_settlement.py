@@ -121,16 +121,16 @@ class HrPayrollSettlement(models.Model):
         unpaid_events = events.filtered(lambda e: e.type == 'unpaid_leave')
         incapacity_events = events.filtered(lambda e: e.type in incapacity_types)
         commissions_events = events.filtered(lambda e: e.type == 'commissions')
+        totals = self._empty_totals()
 
-        for event in unpaid_events:
-            event_days = self.env['hr.payroll.mixin']._calculate_total_settlement_days(event.date, event.date_end)
-
+        for event in incapacity_events:
+            totals['incapacity_days'] += event.quantity
+            
         
         ipdb.set_trace()
         
         
         # === ===
-        totals = self._empty_totals()
         contract = self.employee_id.contract_id
         totals['contract_wage'] = contract.wage
         totals = self.env["hr.payroll.mixin"]._compute_settlement_days(concept, unpaid_events, self.contract_start_date, self.cutoff_date, totals)
