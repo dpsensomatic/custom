@@ -41,7 +41,6 @@ class HrPayrollSettlement(models.Model):
 # ========================
 # Campos Computados
 # ========================
-
     # ========================
     # Computa Los Campos Del Contrato
     # ========================
@@ -57,14 +56,12 @@ class HrPayrollSettlement(models.Model):
             record.contract_type = contract.contract_type_id.name if contract and contract.contract_type_id else False
             record.job_position = contract.job_id.name if contract and contract.job_id else False
     # ========================
-
 # ========================
 
 
 # ========================
 # Helpers Pequeños
 # ========================
-
     # ========================
     #  Vacia Los Totales Que Hayan En Los Diccionarios
     # ========================
@@ -76,22 +73,23 @@ class HrPayrollSettlement(models.Model):
             'start_date': 0.0,
             'end_date': 0.0,
             'days_period': 0.0,
+            'contract_wage':0.0,
+            'incapacity_days': 0.0,
             'absences': 0.0,
             'days_settlement': 0.0,
             'average_wage': 0.0,
+            'base_wage': 0.0,
             'value_wage': 0.0,
             'advances': 0.0,
             'net_value': 0.0,
         }
     # ========================
-    
 # ========================
 
 
 # ========================
 # Acciones Principales
 # ========================
-
     # ========================
     # Genera Las Lineas De La Liquidacion
     # ========================
@@ -119,16 +117,32 @@ class HrPayrollSettlement(models.Model):
         
         # === Trae Los Eventos Y Filtra Los De Tipo 'unpaid_leave' ===
         events = self.env["hr.payroll.mixin"]._get_events(self.employee_id.id, self.contract_start_date, self.cutoff_date)
-        events = events.filtered(lambda e: e.type == 'unpaid_leave')
+        incapacity_types = ['sick_leave', 'arl_leave']
+        unpaid_events = events.filtered(lambda e: e.type == 'unpaid_leave')
+        incapacity_events = events.filtered(lambda e: e.type in incapacity_types)
+        commissions_events = events.filtered(lambda e: e.type == 'commissions')
+
+        for event in unpaid_events:
+            event_days = self.env['hr.payroll.mixin']._calculate_total_settlement_days(event.date, event.date_end)
+
+        
+        ipdb.set_trace()
+        
         
         # === ===
         totals = self._empty_totals()
         contract = self.employee_id.contract_id
-        totals['average_wage'] = contract.wage
-        totals = self.env["hr.payroll.mixin"]._compute_settlement_days(concept, events, self.contract_start_date, self.cutoff_date, totals)
+        totals['contract_wage'] = contract.wage
+        totals = self.env["hr.payroll.mixin"]._compute_settlement_days(concept, unpaid_events, self.contract_start_date, self.cutoff_date, totals)
+        ipdb.set_trace()
+        totals = self.env['hr.payroll.mixin']._compute_settlement_total(commissions_events, totals.days_settlement, totals.contract_wage) #Aqui se calcula salario base y salario promedio
         
+        # prima = base_parafiscal + salario_transporte No tiene el rodamiento
+        # vacaciones = comision + sueldo + rodamiento es lo mismo que la base parafiscal sin las horas extras
+        ipdb.set_trace()
         # === Calculo De Los Conceptos A Liquidar ===
         totals = self.env['hr.payroll.mixin']._calculate_liquidated_wage(concept, totals)
+        ipdb.set_trace()
         return {
             'concept': concept.replace('_', ' ').title(),
             'start_date': contract.date_start,
@@ -137,10 +151,10 @@ class HrPayrollSettlement(models.Model):
             'absences': totals['absences'],
             'days_settlement': totals['days_settlement'],
             'average_wage': totals['average_wage'],
+            'base_wage' : totals['base_wage'],
             'value_wage': totals['value_wage'],
             'advances': totals['advances'],
             'net_value': totals['net_value'],
         }
     # ========================
-    
 # ========================    

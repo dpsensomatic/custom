@@ -18,6 +18,18 @@
                         class="oe_highlight" />
                     <button name="action_generate_accounting_entries" type="object"
                         string="Generar Asientos" class="btn-primary" />
+                    <button name="action_confirm" type="object"
+                        string="Confirmar Nomina" class="btn-primary" 
+                        invisible="state == 'confirmed'"/>
+                    <button name="action_reset_to_draft" type="object"
+                        string="Reestablecer a Borrador" class="btn-secondary"
+                        invisible="state == 'draft'"/>
+                    <button name="%(account.action_move_journal_line)d"
+                        string="Ver Asiento"
+                        type="action"
+                        icon="fa-external-link"
+                        invisible="move_id == False"
+                        context="{'default_id': move_id}"/>
                 </header>
                 <sheet>
                     <group>

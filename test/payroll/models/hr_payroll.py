@@ -6,7 +6,7 @@ from collections import defaultdict
 import ipdb
 import logging
 import ast
-
+import json
 
 _logger = logging.getLogger(__name__)
 
@@ -28,7 +28,10 @@ class HrPayroll(models.Model):
         ('draft', 'Borrador'),
         ('confirmed', 'Confirmada'),
         ('done', 'Cerrada'),
-    ], string="Estado", default="draft")
+    ], string="Estado", readonly=True, default="draft")
+    
+    # === Campos especiales ===
+    precomputed_lines_json = fields.Text(string="Líneas contables precalculadas", copy=False)
     
     # === Campos Many ===
     line_ids = fields.One2many(
@@ -78,7 +81,6 @@ class HrPayroll(models.Model):
         string='Consultar por empleado',
         help='Selecciona un empleado vigente en este periodo de nómina.'
     )    
-
 
 # ========================
     
@@ -132,6 +134,32 @@ class HrPayroll(models.Model):
                 'total_net':0.0,
         }
     # ========================
+    
+    
+    def _empty_total_accounts(self):
+        return { 
+                # === Totales acumulados ===
+                'wages_debit' : 0.0,
+                'wages_credit': 0.0,
+                'commissions': 0.0,
+                'incapacity': 0.0,
+                'transport': 0.0,
+                
+                # === Seguridad Social ===
+                'health_debit': 0.0,
+                'pension_debit': 0.0,
+                'arl_debit': 0.0,
+                
+                # === Beneficios ===
+                'service_bonus_debit': 0.0,
+                'service_bonus_credit': 0.0,
+                'severance_debit': 0.0,
+                'severance_credit': 0.0,
+                'interest_debit': 0.0,
+                'interest_credit': 0.0,
+                'vacations_debit': 0.0,
+                'vacations_credit': 0.0,
+        }
     
 
     # ========================
@@ -291,7 +319,8 @@ class HrPayroll(models.Model):
 
         # ===  ===
         self.line_ids = [(5, 0, 0)] + lines
-
+    # ========================
+    
 
     # ========================
     # Genera Los Apuntes Contables
@@ -301,288 +330,34 @@ class HrPayroll(models.Model):
         for payroll in self:
             payroll.account_line_ids.unlink()
 
-            accounts_model = self.env['hr.predetermined.accounts']
-            acc_config = accounts_model.search([('company_id', '=', self.env.company.id)], limit=1)
-            if not acc_config:
-                continue
-            
-            # === Totales acumulados ===
-            wages_debit = self.currency_id.round(sum(line.wage_earned for line in payroll.line_ids))#check
-            wages_credit = self.currency_id.round(sum(line.net for line in payroll.line_ids)) #check
-            commissions = self.currency_id.round(sum(line.commissions for line in payroll.line_ids)) #check
-            incapacity  = self.currency_id.round(sum(line.sick_leave for line in payroll.line_ids))  #check
-            transport = self.currency_id.round(sum(line.transportation_allowance for line in payroll.line_ids)) #check
 
-            # === Seguridad Social ===
-            health_debit = self.currency_id.round(sum(line.company_health_contribution for line in payroll.line_ids)) #check
-            health_credit = self.currency_id.round(sum(line.health_contribution for line in payroll.line_ids)) #check
-            pension_debit = self.currency_id.round(sum(line.company_pension_contribution for line in payroll.line_ids)) #check
-            pension_credit = self.currency_id.round(sum(payroll.line_ids.mapped('pension_contribution')) + sum(payroll.line_ids.mapped('company_pension_contribution'))) #check
-            arl_debit = self.currency_id.round(sum(line.arl_contribution for line in payroll.line_ids)) #check
-            arl_credit = self.currency_id.round(sum(line.arl_contribution for line in payroll.line_ids)) #check
             
-            # === Beneficios ===
-            service_bonus_debit = self.currency_id.round(sum(line.service_bonus for line in payroll.line_ids)) #check
-            service_bonus_credit = self.currency_id.round(sum(line.service_bonus for line in payroll.line_ids)) #check
-            severance_debit = self.currency_id.round(sum(line.severance for line in payroll.line_ids)) #check
-            severance_credit = self.currency_id.round(sum(line.severance for line in payroll.line_ids)) #check
-            interest_debit = self.currency_id.round(sum(line.interest_on_severance for line in payroll.line_ids)) #check
-            interest_credit = self.currency_id.round(sum(line.interest_on_severance for line in payroll.line_ids)) #check
-            vacations_debit = self.currency_id.round(sum(line.vacations for line in payroll.line_ids)) #check
-            vacations_credit = self.currency_id.round(sum(line.vacations for line in payroll.line_ids)) #check
+            totals_account = self._compute_total_accounts()
+
             
             # === Creación de líneas contables ===
-            lines_vals = []
-    # ========================
-    # Crea La Tabla Con Los Valores En La Nómina 
-    # ========================
-        # ========================
-        #  Beneficios Credito
-        # ========================
-            # === Prima De Servicios === 
-            lines_vals.append({
-                'payroll_id': payroll.id,
-                'concept_name': 'Prima De Servicios Credito',
-                'account_id': acc_config.service_bonus_account_credit.id,
-                'debit': 0.0,
-                'credit': service_bonus_credit,
-            })
-            
-            # === Cesantias ===
-            lines_vals.append({
-                'payroll_id': payroll.id,
-                'concept_name': 'Cesantias Credito',
-                'account_id': acc_config.severance_account_credit.id,
-                'debit': 0.0,
-                'credit': severance_credit,
-            })
-            lines_vals.append({
-                'payroll_id': payroll.id,
-                'concept_name': 'Intereses Sobre Cesantias Credito',
-                'account_id': acc_config.severance_interest_account_credit.id,
-                'debit': 0.0,
-                'credit': interest_credit,
-            })
-            
-            # === Vacaciones ===
-            lines_vals.append({
-                'payroll_id': payroll.id,
-                'concept_name': 'Vacaciones Credito',
-                'account_id': acc_config.vacation_account_credit.id,
-                'debit': 0.0,
-                'credit': vacations_credit,
-            })
-            # ========================
-            
-            
-        # ========================
-        # Debito
-        # ========================
-            # === Sueldos ===
-            lines_vals.append({
-                'payroll_id': payroll.id,
-                'concept_name': 'Sueldos Debito',
-                'account_id': acc_config.wage_account_debit.id,
-                'debit': wages_debit,
-                'credit': 0.0,
-            })
-            lines_vals.append({
-                'payroll_id': payroll.id,
-                'concept_name': 'Comisiones',
-                'account_id': acc_config.commission_account_debit.id,
-                'debit': commissions,
-                'credit': 0.0,
-            })
-            lines_vals.append({
-                'payroll_id': payroll.id,
-                'concept_name': 'Incapacidad',
-                'account_id': acc_config.arl_incapacity_account_debit.id,
-                'debit': incapacity,
-                'credit': 0.0,
-            })
-            
-            lines_vals.append({
-                'payroll_id': payroll.id,
-                'concept_name': 'Auxilio Transporte',
-                'account_id': acc_config.transport_allowance_account_debit.id,
-                'debit': transport,
-                'credit': 0.0,
-            })
-            
-          # === Aportes A Seguridad Social ===
+            # === Creación de líneas contables ===
+            line_vals = []
 
-            # === Aportes A Salud ===
-            lines_vals.append({
-                'payroll_id': payroll.id,
-                'concept_name': 'Aporte A Salud Debito',
-                'account_id': acc_config.health_account_debit.id,
-                'debit': health_debit,
-                'credit': 0.0, 
-            })
-            
-            # === Aportes A Pension ===
-            lines_vals.append({
-                'payroll_id': payroll.id,
-                'concept_name': 'Aportes Pensión Debito',
-                'account_id': acc_config.pension_account_debit.id,
-                'debit': pension_debit,
-                'credit': 0.0,
-            })
-            
-            # === Aportes A Arl === 
-            lines_vals.append({
-                'payroll_id': payroll.id,
-                'concept_name': 'Aportes A Arl Debit',
-                'account_id': acc_config.arl_account_debit.id,
-                'debit': arl_debit,
-                'credit': 0.0,
-            })
-                        
-          # === Beneficios ===   
-          
-            # === Prima De Servicios ===
-            lines_vals.append({
-                'payroll_id': payroll.id,
-                'concept_name': 'Prima De Servicios Debito',
-                'account_id': acc_config.service_bonus_account_debit.id,
-                'debit': service_bonus_debit,
-                'credit': 0.0,
-            })
-            
-            # === Cesantias ===
-            lines_vals.append({
-                'payroll_id': payroll.id,
-                'concept_name': 'Cesantias Debito',
-                'account_id': acc_config.severance_account_debit.id,
-                'debit': severance_debit,
-                'credit': 0.0,
-            })
-            lines_vals.append({
-                'payroll_id': payroll.id,
-                'concept_name': 'Intereses Sobre Cesantias Debito',
-                'account_id': acc_config.severance_interest_account_debit.id,
-                'debit': interest_debit,
-                'credit': 0.0,
-            })
-            
-            # === Vacaciones ===
-            lines_vals.append({
-                'payroll_id': payroll.id,
-                'concept_name': 'Vacaciones Debito',
-                'account_id': acc_config.vacation_account_debit.id,
-                'debit': vacations_debit,
-                'credit': 0.0,
-            })
-        # ========================        
+            # Líneas de cuentas normales
+            line_vals += payroll._configure_accounting_lines(totals_account, payroll)
+
+            # Líneas de aportes (EPS, pensión, ARL)
+            line_vals += payroll._configure_contribution_lines(payroll)
+
+            # Línea de ajuste (si es necesario)
+            line_vals = payroll._rounding_method(line_vals, payroll)
         
-        
-        # ========================
-        # Credito 
-        # ========================        
-
-            # === Sueldos ===
-            lines_vals.append({
-                'payroll_id': payroll.id,
-                'concept_name': 'Sueldos Credito',
-                'account_id': acc_config.wage_account_credit.id,
-                'debit': 0.0,
-                'credit': wages_credit,
-            })
+            payroll.precomputed_lines_json = json.dumps(line_vals)
             
-          # === Aportes A Seguridad Social ===
-            # Diccionario para acumular valores por cuenta
-            totales_por_cuenta = defaultdict(lambda: {'debit': 0.0, 'credit': 0.0, 'concept_name': ''})
-
-            for line in payroll.line_ids:
-                contract = line.contract_id
-                ipdb.set_trace()
-
-                # === Aportes a Salud Crédito ===
-                cuenta_salud = contract.eps_id.eps_account.id or acc_config.health_account_credit.id
-                totales_por_cuenta[cuenta_salud]['credit'] += line.health_contribution
-                totales_por_cuenta[cuenta_salud]['concept_name'] = 'Aportes A Salud Credito'
-
-                # === Aportes Pensión Crédito ===
-                cuenta_pension = contract.pension_fund_id.pension_account.id or acc_config.pension_account_credit.id
-                totales_por_cuenta[cuenta_pension]['credit'] += line.pension_contribution + line.company_pension_contribution
-                totales_por_cuenta[cuenta_pension]['concept_name'] = 'Aportes Pensión Credito'
-
-                # === Aportes ARL Crédito ===
-                cuenta_arl = contract.arl_id.arl_account.id or acc_config.arl_account_credit.id
-                totales_por_cuenta[cuenta_arl]['credit'] += line.arl_contribution
-                totales_por_cuenta[cuenta_arl]['concept_name'] = 'Aportes A Arl Credito'
-                
-          
-            # === Aportes ===
-            for cuenta_id, datos in totales_por_cuenta.items():
-                if not cuenta_id:
-                    continue
-                lines_vals.append({
-                    'payroll_id': payroll.id,
-                    'concept_name': datos['concept_name'],
-                    'account_id': cuenta_id,
-                    'debit': 0.0,
-                    'credit': datos['credit'],
-                })
-
-        # ========================    
-        
-            # === Ajuste por redondeo de decimales ===
-            total_debit = sum(line['debit'] for line in lines_vals)
-            total_credit = sum(line['credit'] for line in lines_vals)
-            difference = round(total_debit - total_credit, 2)
-
-            if abs(difference) >= 0.01:
-                # Determina si hay más débito o crédito
-                adjust_type = 'debit' if difference < 0 else 'credit'
-                adjust_value = abs(difference)
-                
-                # Añade línea de ajuste al diario para cuadrar el asiento
-                lines_vals.append({
-                    'payroll_id': payroll.id,
-                    'concept_name': 'Ajuste por redondeo',
-                    'account_id': acc_config.rounding_credit.id or acc_config.rounding_debit.id,
-                    'debit': adjust_value if adjust_type == 'debit' else 0.0,
-                    'credit': adjust_value if adjust_type == 'credit' else 0.0,
-                })   
-    # ========================
-        
-    # ========================
-    # Genera El Asiento Contable En La Base De Datos De Odoo
-    # ========================
-            # === Trae Los Campos Existentes Dentro De 'account.move.line' ===
-            valid_fields = self.env['account.move.line']._fields.keys()
-            
-            # === Deja Solo Los Campos Necesarios Para La Creacion Del Asiento ===
-            clean_lines_vals = []
-            for line in lines_vals:
-                clean_line = {k: v for k, v in line.items() if k in valid_fields}
-                clean_lines_vals.append((0, 0, clean_line))
-                
-            # === Aplica El Diario Donde Se Almacenara El Asiento Contable ===
-            journal = self.env['account.journal'].search([('type', '=', 'general'), ('name', 'ilike', 'Nomina')], limit=1) 
-            if not journal:
-                raise UserError("Debe crear un diario en facturacion de tipo varios y nombre Nomina.")
-            
-            # === Ajusta El Movimiento Contable y Le Asigna Un Nombre General, Fecha Y El Diario ===
-            move_vals = {
-                'ref': payroll.name,
-                'date': payroll.date_end,
-                'journal_id': journal.id,
-                'line_ids': clean_lines_vals,
-            }
-
-            
-            # === Llama La Funcion Encargada De Crear Los Asientos Contables ===
-            move = self.env['account.move'].create(move_vals)
-            ipdb.set_trace()
-            move.action_post()
-            payroll.move_id = move.id
             # Crear todas las líneas
-            self.env['hr.payroll.account.line'].create(lines_vals)
-            
+            self.env['hr.payroll.account.line'].create(line_vals)
     # ========================
+    
 
+    # ========================
+    # Trae El Empleado Seleccionado Y Consulta Sus Cuentas Contables
+    # ========================
     def action_filter_by_employee(self):
         self.ensure_one()
         if not self.employee_selector_id:
@@ -608,7 +383,7 @@ class HrPayroll(models.Model):
         pension_credit = employee_lines.company_pension_contribution + employee_lines.pension_contribution
         # === Creación de líneas contables ===
 
-        lines_vals = []
+        line_vals = []
     # =======================
     # Crea a Tabla Con Los Valores En La Nómina 
     # =======================
@@ -616,7 +391,7 @@ class HrPayroll(models.Model):
         #  eneficios Credito
         # =======================
         # === Prima De Servicios === 
-        lines_vals.append({
+        line_vals.append({
             'payroll_id': employee_lines.payroll_id.id,
             'concept_name': 'Prima De Servicios Credito',
             'account_id': acc_config.service_bonus_account_credit.id,
@@ -625,14 +400,14 @@ class HrPayroll(models.Model):
         })
         
         # === Cesantias ===
-        lines_vals.append({
+        line_vals.append({
             'payroll_id': employee_lines.payroll_id.id,
             'concept_name': 'Cesantias Credito',
             'account_id': acc_config.severance_account_credit.id,
             'debit': 0.0,
             'credit': employee_lines.severance,
         })
-        lines_vals.append({
+        line_vals.append({
             'payroll_id': employee_lines.payroll_id.id,
             'concept_name': 'Intereses Sobre Cesantias Credito',
             'account_id': acc_config.severance_interest_account_credit.id,
@@ -641,7 +416,7 @@ class HrPayroll(models.Model):
         })
         
         # === Vacaciones ===
-        lines_vals.append({
+        line_vals.append({
             'payroll_id': employee_lines.payroll_id.id,
             'concept_name': 'Vacaciones Credito',
             'account_id': acc_config.vacation_account_credit.id,
@@ -655,21 +430,21 @@ class HrPayroll(models.Model):
         # Debito
         # =======================
         # === Sueldos ===
-        lines_vals.append({
+        line_vals.append({
             'payroll_id': employee_lines.payroll_id.id,
             'concept_name': 'Sueldos Debito',
             'account_id': acc_config.wage_account_debit.id,
             'debit': employee_lines.wage_earned,
             'credit': 0.0,
         })
-        lines_vals.append({
+        line_vals.append({
             'payroll_id': employee_lines.payroll_id.id,
             'concept_name': 'Comisiones',
             'account_id': acc_config.commission_account_debit.id,
             'debit': employee_lines.commissions,
             'credit': 0.0,
         })
-        lines_vals.append({
+        line_vals.append({
             'payroll_id': employee_lines.payroll_id.id,
             'concept_name': 'Incapacidad',
             'account_id': acc_config.arl_incapacity_account_debit.id,
@@ -677,7 +452,7 @@ class HrPayroll(models.Model):
             'credit': 0.0,
         })
         
-        lines_vals.append({
+        line_vals.append({
             'payroll_id': employee_lines.payroll_id.id,
             'concept_name': 'Auxilio Transporte',
             'account_id': acc_config.transport_allowance_account_debit.id,
@@ -687,7 +462,7 @@ class HrPayroll(models.Model):
         
           #=== Aportes A Seguridad Social ===
         # === Aportes A Salud ===
-        lines_vals.append({
+        line_vals.append({
             'payroll_id': employee_lines.payroll_id.id,
             'concept_name': 'Aporte A Salud Debito',
             'account_id': acc_config.health_account_debit.id,
@@ -696,7 +471,7 @@ class HrPayroll(models.Model):
         })
         
         # === Aportes A Pension ===
-        lines_vals.append({
+        line_vals.append({
             'payroll_id': employee_lines.payroll_id.id,
             'concept_name': 'Aportes Pensión Debito',
             'account_id': acc_config.pension_account_debit.id,
@@ -705,7 +480,7 @@ class HrPayroll(models.Model):
         })
         
         # === Aportes A Arl === 
-        lines_vals.append({
+        line_vals.append({
             'payroll_id': employee_lines.payroll_id.id,
             'concept_name': 'Aportes A Arl Debit',
             'account_id': acc_config.arl_account_debit.id,
@@ -716,7 +491,7 @@ class HrPayroll(models.Model):
           #=== Beneficios ===   
         
         # === Prima De Servicios ===
-        lines_vals.append({
+        line_vals.append({
             'payroll_id': employee_lines.payroll_id.id,
             'concept_name': 'Prima De Servicios Debito',
             'account_id': acc_config.service_bonus_account_debit.id,
@@ -725,14 +500,14 @@ class HrPayroll(models.Model):
         })
         
         # === Cesantias ===
-        lines_vals.append({
+        line_vals.append({
             'payroll_id': employee_lines.payroll_id.id,
             'concept_name': 'Cesantias Debito',
             'account_id': acc_config.severance_account_debit.id,
             'debit': employee_lines.severance,
             'credit': 0.0,
         })
-        lines_vals.append({
+        line_vals.append({
             'payroll_id': employee_lines.payroll_id.id,
             'concept_name': 'Intereses Sobre Cesantias Debito',
             'account_id': acc_config.severance_interest_account_debit.id,
@@ -741,7 +516,7 @@ class HrPayroll(models.Model):
         })
         
         # === Vacaciones ===
-        lines_vals.append({
+        line_vals.append({
             'payroll_id': employee_lines.payroll_id.id,
             'concept_name': 'Vacaciones Debito',
             'account_id': acc_config.vacation_account_debit.id,
@@ -755,7 +530,7 @@ class HrPayroll(models.Model):
         # Cedito 
         # =======================        
         # === Sueldos ===
-        lines_vals.append({
+        line_vals.append({
             'payroll_id': employee_lines.payroll_id.id,
             'concept_name': 'Sueldos Credito',
             'account_id': acc_config.wage_account_credit.id,
@@ -766,7 +541,7 @@ class HrPayroll(models.Model):
           #=== Aportes A Seguridad Social ===
         
         # === Aportes A Salud ===
-        lines_vals.append({
+        line_vals.append({
             'payroll_id': employee_lines.payroll_id.id,
             'concept_name': 'Aporte A Salud Credito',
             'account_id': contract.eps_id.eps_account.id,
@@ -775,7 +550,7 @@ class HrPayroll(models.Model):
         })
         
         # === Aportes A Pension ===
-        lines_vals.append({
+        line_vals.append({
             'payroll_id': employee_lines.payroll_id.id,
             'concept_name': 'Aportes Pensión Credito',
             'account_id': contract.pension_fund_id.pension_account.id,
@@ -784,15 +559,15 @@ class HrPayroll(models.Model):
         })
         
         # === Aportes A Arl ===
-        lines_vals.append({
+        line_vals.append({
             'payroll_id': employee_lines.payroll_id.id,
             'concept_name': 'Aportes A Arl Credit',
             'account_id': contract.arl_id.arl_account.id,
             'debit': 0.0,
             'credit': employee_lines.arl_contribution,
         })
-        total_debit = sum(line['debit'] for line in lines_vals)
-        total_credit = sum(line['credit'] for line in lines_vals)
+        total_debit = sum(line['debit'] for line in line_vals)
+        total_credit = sum(line['credit'] for line in line_vals)
         difference = round(total_debit - total_credit, 2)
 
         if abs(difference) >= 0.01:
@@ -801,7 +576,7 @@ class HrPayroll(models.Model):
             adjust_value = abs(difference)
             
             # Añade línea de ajuste al diario para cuadrar el asiento
-            lines_vals.append({
+            line_vals.append({
                 'payroll_id': employee_lines.payrrol_id.id,
                 'concept_name': 'Ajuste Por Redondeo',
                 'account_id': acc_config.rounding_credit.id or acc_config.rounding_debit.id,
@@ -810,11 +585,366 @@ class HrPayroll(models.Model):
             })   
             ipdb.set_trace()
           
-        self.env['hr.payroll.account.line'].create(lines_vals)
-        
+        self.env['hr.payroll.account.line'].create(line_vals)
+    # ========================
+    
+    
+    # ========================
+    # Computa Los Totales De Debito Y Credito
+    # ========================
     @api.depends('account_line_ids.debit', 'account_line_ids.credit')
     def _compute_totals(self):
         for rec in self:
             rec.total_debit = sum(rec.account_line_ids.mapped('debit'))
             rec.total_credit = sum(rec.account_line_ids.mapped('credit'))
+    # ========================
+    
+    
+    # ========================
+    # Extrae Los Valores De La Nomina Generada Y Genera Los Totales
+    # ========================
+    def _compute_total_accounts(self):
+        """Calcula los totales de todas las cuentas con base en las líneas de nómina."""
+        self.ensure_one()  # buena práctica: solo debe aplicarse a un registro
+
+        totals = self._empty_total_accounts()
+        currency = self.currency_id
+
+        # === Totales acumulados ===
+        totals['wages_debit'] = currency.round(sum(line.wage_earned for line in self.line_ids))
+        totals['wages_credit'] = currency.round(sum(line.net for line in self.line_ids))
+        totals['commissions'] = currency.round(sum(line.commissions for line in self.line_ids))
+        totals['incapacity'] = currency.round(sum(line.sick_leave for line in self.line_ids))
+        totals['transport'] = currency.round(sum(line.transportation_allowance for line in self.line_ids))
+
+        # === Seguridad Social ===
+        totals['health_debit'] = currency.round(sum(line.company_health_contribution for line in self.line_ids))
+        totals['pension_debit'] = currency.round(sum(line.company_pension_contribution for line in self.line_ids))
+        totals['arl_debit'] = currency.round(sum(line.arl_contribution for line in self.line_ids))
+
+        # === Beneficios ===
+        totals['service_bonus_debit'] = currency.round(sum(line.service_bonus for line in self.line_ids))
+        totals['service_bonus_credit'] = totals['service_bonus_debit']
+        totals['severance_debit'] = currency.round(sum(line.severance for line in self.line_ids))
+        totals['severance_credit'] = totals['severance_debit']
+        totals['interest_debit'] = currency.round(sum(line.interest_on_severance for line in self.line_ids))
+        totals['interest_credit'] = totals['interest_debit']
+        totals['vacations_debit'] = currency.round(sum(line.vacations for line in self.line_ids))
+        totals['vacations_credit'] = totals['vacations_debit']
+        
+        return totals
+    # ========================
+    
+     
+    # ========================
+    # Extrae Valores De Los Aportes Y Genera Los Totales
+    # ========================
+    def _configure_contribution_lines(self, payroll):
+        line_vals = []
+        currency = self.currency_id
+
+        acc_config = self.env['hr.predetermined.accounts'].search([
+            ('company_id', '=', self.env.company.id)
+        ], limit=1)
+        if not acc_config:
+            return []
+
+        totales_por_cuenta = defaultdict(lambda: {'debit': 0.0, 'credit': 0.0, 'concept_name': ''})
+
+        for line in payroll.line_ids:
+            contract = line.contract_id
+
+            # === Salud Crédito ===
+            cuenta_salud = contract.eps_id.eps_account.id or acc_config.health_account_credit.id
+            totales_por_cuenta[cuenta_salud]['credit'] += currency.round(line.health_contribution)
+            totales_por_cuenta[cuenta_salud]['concept_name'] = 'Aportes A Salud Credito'
+
+            # === Pensión Crédito ===
+            cuenta_pension = contract.pension_fund_id.pension_account.id or acc_config.pension_account_credit.id
+            totales_por_cuenta[cuenta_pension]['credit'] += currency.round((
+                line.pension_contribution + line.company_pension_contribution
+            ))
+            totales_por_cuenta[cuenta_pension]['concept_name'] = 'Aportes Pensión Credito'
+
+            # === ARL Crédito ===
+            cuenta_arl = contract.arl_id.arl_account.id or acc_config.arl_account_credit.id
+            totales_por_cuenta[cuenta_arl]['credit'] += currency.round(line.arl_contribution)
+            totales_por_cuenta[cuenta_arl]['concept_name'] = 'Aportes A Arl Credito'
+
+        # Convertir diccionario a lista de líneas
+        for cuenta_id, datos in totales_por_cuenta.items():
+            if not cuenta_id:
+                continue
+            line_vals.append({
+                'payroll_id': payroll.id,
+                'concept_name': datos['concept_name'],
+                'account_id': cuenta_id,
+                'debit': 0.0,
+                'credit': datos['credit'],
+            })
+
+        return line_vals
+    # ========================
+    
+    
+    # ========================
+    # Ajusta Las Lineas Con Los Totales Dados
+    # ========================
+    def _configure_accounting_lines(self,totals,payroll):
+        line_vals = []
+        accounts_model = self.env['hr.predetermined.accounts']
+        acc_config = accounts_model.search([('company_id', '=', self.env.company.id)], limit=1)
+        if not acc_config:
+            return []
+        
+        # ========================
+        #  Beneficios Credito
+        # ========================
+        # === Prima De Servicios === 
+        line_vals.append({
+        'payroll_id': payroll.id,
+        'concept_name': 'Prima De Servicios Credito',
+        'account_id': acc_config.service_bonus_account_credit.id,
+        'debit': 0.0,
+        'credit': totals['service_bonus_credit'],
+        })
+        
+        # === Cesantias ===
+        line_vals.append({
+        'payroll_id': payroll.id,
+        'concept_name': 'Cesantias Credito',
+        'account_id': acc_config.severance_account_credit.id,
+        'debit': 0.0,
+        'credit': totals['severance_credit'],
+        })
+        line_vals.append({
+        'payroll_id': payroll.id,
+        'concept_name': 'Intereses Sobre Cesantias Credito',
+        'account_id': acc_config.severance_interest_account_credit.id,
+        'debit': 0.0,
+        'credit': totals['interest_credit'],
+        })
+        
+        # === Vacaciones ===
+        line_vals.append({
+        'payroll_id': payroll.id,
+        'concept_name': 'Vacaciones Credito',
+        'account_id': acc_config.vacation_account_credit.id,
+        'debit': 0.0,
+        'credit': totals['vacations_credit'],
+        })
+        # ========================
+        
+        
+        # ========================
+        # Debito
+        # ========================
+        # === Sueldos ===
+        line_vals.append({
+        'payroll_id': payroll.id,
+        'concept_name': 'Sueldos Debito',
+        'account_id': acc_config.wage_account_debit.id,
+        'debit': totals['wages_debit'],
+        'credit': 0.0,
+        })
+        line_vals.append({
+        'payroll_id': payroll.id,
+        'concept_name': 'Comisiones',
+        'account_id': acc_config.commission_account_debit.id,
+        'debit': totals['commissions'],
+        'credit': 0.0,
+        })
+        line_vals.append({
+        'payroll_id': payroll.id,
+        'concept_name': 'Incapacidad',
+        'account_id': acc_config.arl_incapacity_account_debit.id,
+        'debit': totals['incapacity'],
+        'credit': 0.0,
+        })
+        
+        line_vals.append({
+        'payroll_id': payroll.id,
+        'concept_name': 'Auxilio Transporte',
+        'account_id': acc_config.transport_allowance_account_debit.id,
+        'debit': totals['transport'],
+        'credit': 0.0,
+        })
+        
+        # === Aportes A Seguridad Social ===
+# === Aportes A Salud ===
+        line_vals.append({
+        'payroll_id': payroll.id,
+        'concept_name': 'Aporte A Salud Debito',
+        'account_id': acc_config.health_account_debit.id,
+        'debit': totals['health_debit'],
+        'credit': 0.0, 
+        })
+        
+        # === Aportes A Pension ===
+        line_vals.append({
+        'payroll_id': payroll.id,
+        'concept_name': 'Aportes Pensión Debito',
+        'account_id': acc_config.pension_account_debit.id,
+        'debit': totals['pension_debit'],
+        'credit': 0.0,
+        })
+        
+        # === Aportes A Arl === 
+        line_vals.append({
+        'payroll_id': payroll.id,
+        'concept_name': 'Aportes A Arl Debit',
+        'account_id': acc_config.arl_account_debit.id,
+        'debit': totals['arl_debit'],
+        'credit': 0.0,
+        })
+        
+          # === Beneficios ===   
+          
+        # === Prima De Servicios ===
+        line_vals.append({
+        'payroll_id': payroll.id,
+        'concept_name': 'Prima De Servicios Debito',
+        'account_id': acc_config.service_bonus_account_debit.id,
+        'debit': totals['service_bonus_debit'],
+        'credit': 0.0,
+        })
+        
+        # === Cesantias ===
+        line_vals.append({
+        'payroll_id': payroll.id,
+        'concept_name': 'Cesantias Debito',
+        'account_id': acc_config.severance_account_debit.id,
+        'debit': totals['severance_debit'],
+        'credit': 0.0,
+        })
+        line_vals.append({
+        'payroll_id': payroll.id,
+        'concept_name': 'Intereses Sobre Cesantias Debito',
+        'account_id': acc_config.severance_interest_account_debit.id,
+        'debit': totals['interest_debit'],
+        'credit': 0.0,
+        })
+        
+        # === Vacaciones ===
+        line_vals.append({
+        'payroll_id': payroll.id,
+        'concept_name': 'Vacaciones Debito',
+        'account_id': acc_config.vacation_account_debit.id,
+        'debit': totals['vacations_debit'],
+        'credit': 0.0,
+        })
+        # ========================        
+        
+        
+        # ========================
+        # Credito 
+        # ========================        
+
+        # === Sueldos ===
+        line_vals.append({
+        'payroll_id': payroll.id,
+        'concept_name': 'Sueldos Credito',
+        'account_id': acc_config.wage_account_credit.id,
+        'debit': 0.0,
+        'credit': totals['wages_credit'],
+        })
             
+        return line_vals
+    # ========================
+
+
+    # ========================
+    # Redondea Los Decimales 
+    # ========================
+    def _rounding_method(self, lines_vals, payroll):
+        """Ajuste por redondeo si los débitos y créditos no cuadran."""
+        acc_config = self.env['hr.predetermined.accounts'].search([
+            ('company_id', '=', self.env.company.id)
+        ], limit=1)
+        if not acc_config:
+            return lines_vals
+
+        total_debit = sum(line['debit'] for line in lines_vals)
+        total_credit = sum(line['credit'] for line in lines_vals)
+        difference = round(total_debit - total_credit, 2)
+
+        if abs(difference) >= 0.01:
+            adjust_type = 'debit' if difference < 0 else 'credit'
+            adjust_value = abs(difference)
+
+            lines_vals.append({
+                'payroll_id': payroll.id,
+                'concept_name': 'Ajuste por redondeo',
+                'account_id': acc_config.rounding_credit.id or acc_config.rounding_debit.id,
+                'debit': adjust_value if adjust_type == 'debit' else 0.0,
+                'credit': adjust_value if adjust_type == 'credit' else 0.0,
+            })
+
+        return lines_vals
+    # ========================
+    
+    
+    # ========================
+    # Confirma Los Asientos Contables Y Los Guarda En account.move
+    # ========================
+    def action_confirm(self):
+        for payroll in self:
+            
+            if not payroll.precomputed_lines_json:
+                raise UserError('Genere la nomina y las cuentas contables')
+
+            line_vals = json.loads(payroll.precomputed_lines_json or "[]")
+            if not line_vals:
+                continue
+            
+            # === Trae Los Campos Existentes Dentro De 'account.move.line' ===
+            valid_fields = self.env['account.move.line']._fields.keys()
+            # 
+            # === Deja Solo Los Campos Necesarios Para La Creacion Del Asiento ===
+            clean_line_vals = []
+            for line in line_vals:
+                clean_line = {k: v for k, v in line.items() if k in valid_fields}
+                clean_line_vals.append((0, 0, clean_line))
+            
+            journal = self.env['account.journal'].search([('type', '=', 'general'), ('name', 'ilike', 'Nomina')], limit=1) 
+            if not journal:
+                raise UserError("Debe crear un diario en facturacion de tipo varios y nombre Nomina.")
+            # Crea el asiento contable
+            
+            if payroll.move_id:
+                move = payroll.move_id
+                # Si está publicado, primero lo pasamos a borrador
+                if move.state == 'posted':
+                    move.button_draft()
+
+                    # Borrar líneas viejas y escribir las nuevas
+                    move.line_ids.unlink()
+                    move.write({
+                        'journal_id': journal.id,
+                        'date': payroll.date_end,
+                        'ref': payroll.name,
+                        'line_ids': clean_line_vals,
+                    })
+            else:
+                move = self.env['account.move'].create({
+                    'journal_id': journal.id,
+                    'date' : payroll.date_end,
+                    'ref': payroll.name,
+                    'line_ids': clean_line_vals,
+                })
+                payroll.move_id = move.id
+                
+            move.action_post()
+            payroll.state ='confirmed'
+    # ========================
+    
+    
+    # ========================
+    # Actualiza Los Asientos Contables A Estado Draft  
+    # ========================
+    def action_reset_to_draft(self):
+        for payroll in self:
+            if payroll.move_id and payroll.move_id.state == 'posted':
+                payroll.move_id.button_draft()
+            payroll.state = 'draft'
+    # ========================

@@ -244,13 +244,43 @@ class HrPayrollMixin(models.AbstractModel):
 
 
     # ========================
+    # Calcula El Salario Base Y Salario Promedio
+    # ========================
+    # def _compute_settlement_total(self, commissions_events, totals):
+        
+    
+    # ========================
+    
+    # ========================
+    # Calcula Los Totales De La Liquidacion
+    # ========================
+    def _calculate_liquidated_wage(self, concept, totals):
+        
+        # === Calcula Segun El Concepto ===
+        if concept == 'vacaciones':
+            totals['value_wage'] = totals['base_wage'] * totals['days_settlement'] / 720
+        elif concept == 'prima':
+            totals['value_wage'] = totals['average_wage'] * totals['days_settlement'] / 360
+        elif concept == 'cesantias':
+            totals['value_wage'] = totals['average_wage'] * totals['days_settlement'] / 360
+        elif concept == 'intereses_cesantias':
+            ces = totals['average_wage'] * totals['days_settlement'] / 360
+            totals['value_wage'] = ces * 0.12 * totals['days_settlement'] / 360
+        else:
+            totals['value_wage'] = 0
+            
+        return totals
+    # ========================
+
+
+    # ========================
     # Calcula El Salario A Liquidar
     # ========================
     def _calculate_liquidated_wage(self, concept, totals):
         
         # === Calcula Segun El Concepto ===
         if concept == 'vacaciones':
-            totals['value_wage'] = totals['average_wage'] * totals['days_settlement'] / 720
+            totals['value_wage'] = totals['base_wage'] * totals['days_settlement'] / 720
         elif concept == 'prima':
             totals['value_wage'] = totals['average_wage'] * totals['days_settlement'] / 360
         elif concept == 'cesantias':
