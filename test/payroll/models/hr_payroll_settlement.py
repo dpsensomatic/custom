@@ -122,19 +122,26 @@ class HrPayrollSettlement(models.Model):
         incapacity_events = events.filtered(lambda e: e.type in incapacity_types)
         commissions_events = events.filtered(lambda e: e.type == 'commissions')
         totals = self._empty_totals()
+        transport_day = 6666.666666666667
+        
 
         for event in incapacity_events:
             totals['incapacity_days'] += event.quantity
-            
         
-        ipdb.set_trace()
         
         
         # === ===
         contract = self.employee_id.contract_id
         totals['contract_wage'] = contract.wage
         totals = self.env["hr.payroll.mixin"]._compute_settlement_days(concept, unpaid_events, self.contract_start_date, self.cutoff_date, totals)
+        
+        # === Calcula El Transporte Para Los Beneficios ===
+        transport_total_incapacity = totals['incapacity_days'] * transport_day    
+        transport_total = totals['days_period'] * transport_day 
+        transport_value = transport_total - transport_total_incapacity
         ipdb.set_trace()
+        
+        
         totals = self.env['hr.payroll.mixin']._compute_settlement_total(commissions_events, totals.days_settlement, totals.contract_wage) #Aqui se calcula salario base y salario promedio
         
         # prima = base_parafiscal + salario_transporte No tiene el rodamiento
