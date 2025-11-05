@@ -16,12 +16,17 @@ class HrParameters(models.Model):
     minimum_wage = fields.Float(string="Salario Mínimo", required=True)
     transport_allowance = fields.Float(string="Auxilio Transporte")
     uvt_value = fields.Float(string="Valor UVT")
-    company_eps_percentage = fields.Float(string="EPS Empresa")
-    employee_eps_percentage = fields.Float(string="EPS Trabajador")
-    company_pension_percentage = fields.Float(string="Pensión Empresa")
-    employee_pension_percentage = fields.Float(string="Pensión Trabajador")
     
-
+    # === Aportes Seguridad Social ===
+    company_eps_pct = fields.Float(string="EPS Empresa")
+    employee_eps_pct = fields.Float(string="EPS Trabajador")
+    company_pension_pct = fields.Float(string="Pensión Empresa")
+    employee_pension_pct = fields.Float(string="Pensión Trabajador")
+    
+    # === Aportes Parafiscales ===
+    compensation_fund_pct = fields.Float(string="Caja Compensacion")
+    sena_pct = fields.Float(string="Sena")
+    icbf_pct = fields.Float(string="ICBF")
     
     # === Restricción para que no se repita el año ===
     _sql_constraints = [

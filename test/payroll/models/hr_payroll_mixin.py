@@ -91,10 +91,13 @@ class HrPayrollMixin(models.AbstractModel):
             "minimum_wage": record.minimum_wage,
             "transport_allowance": record.transport_allowance,
             "uvt_value": record.uvt_value,
-            "company_eps_percentage": record.company_eps_percentage,
-            "employee_eps_percentage": record.employee_eps_percentage,
-            "company_pension_percentage": record.company_pension_percentage,
-            "employee_pension_percentage": record.employee_pension_percentage,
+            "company_eps_pct": record.company_eps_pct,
+            "employee_eps_pct": record.employee_eps_pct,
+            "company_pension_pct": record.company_pension_pct,
+            "employee_pension_pct": record.employee_pension_pct,
+            "compensation_fund_pct" : record.compensation_fund_pct,
+            "sena_pct": record.sena_pct,
+            "icbf_pct": record.icbf_pct,
         }
     # ========================
 # ========================
@@ -162,10 +165,11 @@ class HrPayrollMixin(models.AbstractModel):
     # Auxilio de transporte
     # ========================
     @api.model
-    def _compute_transport_allowance(self, wage, days_worked, min_wage, allowance):
+    def _compute_transport_allowance(self, wage, days_worked, min_wage, allowance, contract):
         """Calcula auxilio de transporte según el SMMLV."""
-        if wage <= (2 * min_wage):
-            return (allowance / 30.0) * days_worked
+        if not contract.sena_apprentice and not contract.apprentice_type == 'academic':  
+            if wage <= (2 * min_wage):
+                return (allowance / 30.0) * days_worked
         return 0.0
     # ========================
     
@@ -178,13 +182,30 @@ class HrPayrollMixin(models.AbstractModel):
                                company_pension_pct, employee_pension_pct, minimum_wage, contract):
         """Recibe el valor base de las contribuciones y aplica los cálculos."""
         arl_fee_pct= self._assign_arl(contract.arl_fee)
-        if totals['gross'] >= minimum_wage*10:
+        if totals['gross'] >= minimum_wage*10 or contract.sena_apprentice:
             totals['company_health_contribution'] = totals['gross'] * company_eps_pct / 100.0
-        else:totals['company_health_contribution'] = 0.0
-        totals['company_pension_contribution'] = (totals['gross'] * company_pension_pct / 100.0)
-        totals['pension_contribution'] = totals['gross'] * employee_pension_pct / 100.0
-        totals['health_contribution'] = totals['gross'] * employee_eps_pct / 100.0
+        if not contract.sena_apprentice and not contract.apprentice_type == 'academic':  
+            totals['company_pension_contribution'] = (totals['gross'] * company_pension_pct / 100.0)
+            totals['pension_contribution'] = totals['gross'] * employee_pension_pct / 100.0
+            totals['health_contribution'] = totals['gross'] * employee_eps_pct / 100.0
         totals['arl_contribution'] = totals['gross'] * arl_fee_pct / 100.0
+        return totals
+    # ========================
+    
+    
+    # ========================
+    # Recibe Los Parametros Anuales Y Asigna Devuelve Los Aportes Parafiscales Correspondientes 
+    # ========================
+    @api.model
+    def _compute_parafiscal_contributions(self, totals, compensation_fund_pct, sena_pct,
+                               icbf_pct, minimum_wage, contract):
+        """Recibe el valor base de las contribuciones y aplica los cálculos."""
+        if totals['gross'] >= minimum_wage*10:
+            totals['sena'] = totals['gross'] * sena_pct / 100.0
+            totals['icbf'] = totals['gross'] * icbf_pct / 100.0
+        if contract.compensation_check:
+            totals['compensation_fund'] = (totals['gross'] * compensation_fund_pct / 100.0)
+
 
         return totals
     # ========================
@@ -194,12 +215,13 @@ class HrPayrollMixin(models.AbstractModel):
     # Recibe los parametros anuales y retorna los totales de las prestaciones sociales
     # ========================
     @api.model
-    def _compute_benefits(self, totals, days_worked):
-        totals['service_bonus'] = totals['gross'] * (days_worked / 360)
-        totals['severance'] = totals['gross'] * (days_worked / 360)
-        totals['interest_on_severance'] = totals['severance'] * 0.12 * (days_worked / 360)
-        totals['vacations'] = totals['parafiscal_base'] *0.0417
-        totals['total_provisions'] = totals['service_bonus'] + totals['severance'] + totals['interest_on_severance'] + totals['vacations']
+    def _compute_benefits(self, totals, days_worked, contract):
+        if not contract.sena_apprentice and not contract.apprentice_type == 'academic':  
+            totals['service_bonus'] = totals['gross'] * (days_worked / 360)
+            totals['severance'] = totals['gross'] * (days_worked / 360)
+            totals['interest_on_severance'] = totals['severance'] * 0.12 * (days_worked / 360)
+            totals['vacations'] = totals['parafiscal_base'] *0.0417
+            totals['total_provisions'] = totals['service_bonus'] + totals['severance'] + totals['interest_on_severance'] + totals['vacations']
         return totals
     # ========================  
 
@@ -217,28 +239,19 @@ class HrPayrollMixin(models.AbstractModel):
         if concept == 'prima':
             start_date_prima = date(2025,7,1)
             if start_date_prima >= start_date:
-                totals['days_period'] = self._calculate_total_settlement_days(start_date_prima, end_date)
+                totals['period_days'] = self._calculate_total_settlement_days(start_date_prima, end_date)
             else:
                 d1 = fields.Date.from_string(start_date)
                 p1 = fields.Date.from_string(start_date_prima)
                 overlap_start = max(p1, d1)
-                totals['days_period'] = self._calculate_total_settlement_days(overlap_start, end_date)
+                totals['period_days'] = self._calculate_total_settlement_days(overlap_start, end_date)
         else:
-            totals['days_period'] = self._calculate_total_settlement_days(start_date, end_date)
+            totals['period_days'] = self._calculate_total_settlement_days(start_date, end_date)
         
         if not events:
-            totals['days_settlement'] = totals['days_period']
+            totals['settlement_days'] = totals['period_days']
             return totals
         
-        # === ===
-        for ev in events:
-            if concept == 'prima':
-                totals['absences'] = self._calculate_total_settlement_days(ev.date, ev.date_end)
-                totals['days_settlement'] = totals['days_period'] - totals['absences']
-
-            else:
-                totals['absences'] = self._calculate_total_settlement_days(ev.date, ev.date_end)
-                totals['days_settlement'] = totals['days_period'] - totals['absences']
         return totals
     # ========================
 
@@ -246,10 +259,25 @@ class HrPayrollMixin(models.AbstractModel):
     # ========================
     # Calcula El Salario Base Y Salario Promedio
     # ========================
-    # def _compute_settlement_total(self, commissions_events, totals):
+    def _compute_settlement_totals(self, totals, contract_wage, period_days, commissions, transport_value, absences, concept ):
+        # === Consigue El total De Meses Totales A Trabajar ===
+        total_months = period_days/30
         
-    
+        # === Quita El Auxilio De Transporte Del Promedio En Vacaciones ===
+        if concept == 'vacations':
+            total_base_wage = (contract_wage*total_months)+commissions
+        else:
+            total_base_wage = (contract_wage*total_months)+commissions + transport_value
+            
+        # === Arroja El Total Descontando Las Licencias No Remuneradas
+        total_absence_base_wage = total_base_wage-((contract_wage/30)*absences)
+        
+        # === Retorna El Promedio Mensual ===
+        totals['average_wage'] = total_absence_base_wage/total_months
+        round(totals['average_wage'])
+        return totals    
     # ========================
+    
     
     # ========================
     # Calcula Los Totales De La Liquidacion
@@ -258,42 +286,19 @@ class HrPayrollMixin(models.AbstractModel):
         
         # === Calcula Segun El Concepto ===
         if concept == 'vacaciones':
-            totals['value_wage'] = totals['base_wage'] * totals['days_settlement'] / 720
+            totals['value_wage'] = totals['average_wage'] * totals['settlement_days'] / 720
         elif concept == 'prima':
-            totals['value_wage'] = totals['average_wage'] * totals['days_settlement'] / 360
+            totals['value_wage'] = totals['average_wage'] * totals['settlement_days'] / 360
         elif concept == 'cesantias':
-            totals['value_wage'] = totals['average_wage'] * totals['days_settlement'] / 360
+            totals['value_wage'] = totals['average_wage'] * totals['settlement_days'] / 360
         elif concept == 'intereses_cesantias':
-            ces = totals['average_wage'] * totals['days_settlement'] / 360
-            totals['value_wage'] = ces * 0.12 * totals['days_settlement'] / 360
+            ces = totals['average_wage'] * totals['settlement_days'] / 360
+            totals['value_wage'] = ces * 0.12 * totals['settlement_days'] / 360
         else:
             totals['value_wage'] = 0
             
         return totals
     # ========================
-
-
-    # ========================
-    # Calcula El Salario A Liquidar
-    # ========================
-    def _calculate_liquidated_wage(self, concept, totals):
-        
-        # === Calcula Segun El Concepto ===
-        if concept == 'vacaciones':
-            totals['value_wage'] = totals['base_wage'] * totals['days_settlement'] / 720
-        elif concept == 'prima':
-            totals['value_wage'] = totals['average_wage'] * totals['days_settlement'] / 360
-        elif concept == 'cesantias':
-            totals['value_wage'] = totals['average_wage'] * totals['days_settlement'] / 360
-        elif concept == 'intereses_cesantias':
-            ces = totals['average_wage'] * totals['days_settlement'] / 360
-            totals['value_wage'] = ces * 0.12 * totals['days_settlement'] / 360
-        else:
-            totals['value_wage'] = 0
-            
-        return totals
-    # ========================
-
   # ========================
 
 # ========================

@@ -16,28 +16,47 @@
                         <field name="uvt_value" />
                     </group>
                     <group string="Aportes seguridad social">
-                        <label for="company_eps_percentage" />
+                        <label for="company_eps_pct" />
                         <div>
-                            <field name="company_eps_percentage" class="oe_inline" nolabel="1" />
+                            <field name="company_eps_pct" class="oe_inline" nolabel="1" />
                             <span class="o_form_label oe_inline">%</span>
                         </div>
 
-                        <label for="employee_eps_percentage" />
+                        <label for="employee_eps_pct" />
                         <div>
-                            <field name="employee_eps_percentage" class="oe_inline" nolabel="1" />
+                            <field name="employee_eps_pct" class="oe_inline" nolabel="1" />
                             <span class="o_form_label oe_inline">%</span>
                         </div>
 
-                        <label for="company_pension_percentage" />
+                        <label for="company_pension_pct" />
                         <div>
-                            <field name="company_pension_percentage" class="oe_inline" nolabel="1" />
+                            <field name="company_pension_pct" class="oe_inline" nolabel="1" />
                             <span class="o_form_label oe_inline">%</span>
                         </div>
 
 
-                        <label for="employee_pension_percentage" />
+                        <label for="employee_pension_pct" />
                         <div>
-                            <field name="employee_pension_percentage" class="oe_inline" nolabel="1" />
+                            <field name="employee_pension_pct" class="oe_inline" nolabel="1" />
+                            <span class="o_form_label oe_inline">%</span>
+                        </div>
+                    </group>
+                    <group string="Aportes parafiscales">
+                        <label for="compensation_fund_pct" />
+                        <div>
+                            <field name="compensation_fund_pct" class="oe_inline" nolabel="1" />
+                            <span class="o_form_label oe_inline">%</span>
+                        </div>
+
+                        <label for="sena_pct" />
+                        <div>
+                            <field name="sena_pct" class="oe_inline" nolabel="1" />
+                            <span class="o_form_label oe_inline">%</span>
+                        </div>
+
+                        <label for="icbf_pct" />
+                        <div>
+                            <field name="icbf_pct" class="oe_inline" nolabel="1" />
                             <span class="o_form_label oe_inline">%</span>
                         </div>
                     </group>
@@ -56,8 +75,8 @@
                 <field name="minimum_wage" />
                 <field name="transport_allowance" />
                 <field name="uvt_value" />
-                <field name="company_eps_percentage" />
-                <field name="employee_eps_percentage" />
+                <field name="company_eps_pct" />
+                <field name="employee_eps_pct" />
             </list>
         </field>
     </record>

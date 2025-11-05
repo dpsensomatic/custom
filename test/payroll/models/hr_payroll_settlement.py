@@ -1,5 +1,6 @@
 from odoo import fields, models, api
 from odoo.exceptions import UserError
+from datetime import date
 import ipdb
 
 # ========================
@@ -72,13 +73,15 @@ class HrPayrollSettlement(models.Model):
             'concept': 0.0,
             'start_date': 0.0,
             'end_date': 0.0,
-            'days_period': 0.0,
+            'period_days': 0.0,
             'contract_wage':0.0,
             'incapacity_days': 0.0,
+            'transport_days':0.0,
+            'transport_value':0.0,
+            'commissions_value':0.0,
             'absences': 0.0,
-            'days_settlement': 0.0,
+            'settlement_days': 0.0,
             'average_wage': 0.0,
-            'base_wage': 0.0,
             'value_wage': 0.0,
             'advances': 0.0,
             'net_value': 0.0,
@@ -115,50 +118,84 @@ class HrPayrollSettlement(models.Model):
     # ========================
     def _get_line_vals(self, concept):
         
-        # === Trae Los Eventos Y Filtra Los De Tipo 'unpaid_leave' ===
-        events = self.env["hr.payroll.mixin"]._get_events(self.employee_id.id, self.contract_start_date, self.cutoff_date)
+        # ========================
+        # Trae Los eventos 
+        # ========================
+        # === Filtra Lo Eventos Y Trae Los Existententes Dentro Del Periodo ===
+        if concept == 'prima':
+            start_date_prima = date(2025,7,1)
+            if start_date_prima >= self.contract_start_date:
+                events = self.env["hr.payroll.mixin"]._get_events(self.employee_id.id, start_date_prima, self.cutoff_date)
+            else:
+                d1 = fields.Date.from_string(self.contract_start_date)
+                p1 = fields.Date.from_string(start_date_prima)
+                overlap_start = max(p1, d1)
+                events = self.env["hr.payroll.mixin"]._get_events(self.employee_id.id, overlap_start, self.cutoff_date)
+                
+        else:
+            events = self.env["hr.payroll.mixin"]._get_events(self.employee_id.id, self.contract_start_date, self.cutoff_date)
+            
+        # === Se Guardan Los Eventos Que Se Comportan Distinto ===
         incapacity_types = ['sick_leave', 'arl_leave']
         unpaid_events = events.filtered(lambda e: e.type == 'unpaid_leave')
         incapacity_events = events.filtered(lambda e: e.type in incapacity_types)
         commissions_events = events.filtered(lambda e: e.type == 'commissions')
-        totals = self._empty_totals()
-        transport_day = 6666.666666666667
-        
+        # ========================
 
+        # === Inicializa El Diccionario ===
+        totals = self._empty_totals()
+                
+        # === Trae El Sueldo Del Contrato ===
+        totals['contract_wage'] = self.employee_id.contract_id.wage
+        
+        # === Trae Los Dias De Ausencia Con Las Licencias No Remuneradas ===
+        totals = self.env["hr.payroll.mixin"]._compute_settlement_days(concept, unpaid_events, self.contract_start_date, self.cutoff_date, totals)
+
+        # ========================
+        # Calculo auxilio de transporte
+        # ========================
+        # === Trae El Valor De Auxilio De Transporte Y Lo Ajusta A Valor Por Dia===
+        parameters = self.env['hr.payroll.mixin']._get_parameter(self.contract_id.date_start)
+        transport_day_value = parameters['transport_allowance']/30
+        
+        # === Recorre Los Eventos Que Descuentan EL Auxilio De Transporte ===
         for event in incapacity_events:
             totals['incapacity_days'] += event.quantity
+        for event in unpaid_events:
+            totals['incapacity_days'] += event.quantity
+            totals['absences'] += event.quantity
+        totals['transport_days'] = totals['period_days'] - totals['incapacity_days']
         
+        # === Ajusta El Valor Total Del Auxilio De Transporte ===
+        totals['transport_value'] = totals['transport_days'] * transport_day_value  
+        # ========================
         
+           
+        # === Se Ajusta El Total De Dias A Liquidar ===
+        totals['settlement_days'] = totals['period_days'] - totals['absences']
+
+        for commission in commissions_events:
+            totals['commissions_value'] += commission.fixed_value
+
+        totals = self.env['hr.payroll.mixin']._compute_settlement_totals(totals,
+                                                                         totals['contract_wage'], 
+                                                                         totals['settlement_days'],
+                                                                         totals['commissions_value'],
+                                                                         totals['transport_value'],
+                                                                         totals['absences'],
+                                                                         concept
+                                                                         )
         
-        # === ===
-        contract = self.employee_id.contract_id
-        totals['contract_wage'] = contract.wage
-        totals = self.env["hr.payroll.mixin"]._compute_settlement_days(concept, unpaid_events, self.contract_start_date, self.cutoff_date, totals)
-        
-        # === Calcula El Transporte Para Los Beneficios ===
-        transport_total_incapacity = totals['incapacity_days'] * transport_day    
-        transport_total = totals['days_period'] * transport_day 
-        transport_value = transport_total - transport_total_incapacity
-        ipdb.set_trace()
-        
-        
-        totals = self.env['hr.payroll.mixin']._compute_settlement_total(commissions_events, totals.days_settlement, totals.contract_wage) #Aqui se calcula salario base y salario promedio
-        
-        # prima = base_parafiscal + salario_transporte No tiene el rodamiento
-        # vacaciones = comision + sueldo + rodamiento es lo mismo que la base parafiscal sin las horas extras
-        ipdb.set_trace()
         # === Calculo De Los Conceptos A Liquidar ===
         totals = self.env['hr.payroll.mixin']._calculate_liquidated_wage(concept, totals)
-        ipdb.set_trace()
         return {
             'concept': concept.replace('_', ' ').title(),
-            'start_date': contract.date_start,
+            'start_date': self.employee_id.contract_id.date_start,
             'end_date': self.cutoff_date,
-            'days_period': totals['days_period'],
+            'period_days': totals['period_days'],
             'absences': totals['absences'],
-            'days_settlement': totals['days_settlement'],
+            'settlement_days': totals['settlement_days'],
             'average_wage': totals['average_wage'],
-            'base_wage' : totals['base_wage'],
             'value_wage': totals['value_wage'],
             'advances': totals['advances'],
             'net_value': totals['net_value'],

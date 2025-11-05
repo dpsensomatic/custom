@@ -74,10 +74,18 @@ class HrPredeterminedAccounts(models.Model):
     arl_account_credit = fields.Many2one("account.account", string="Cuenta ARL Credito")
     arl_account_debit = fields.Many2one("account.account", string="Cuenta ARL Debito")
     
+  #  === Aportes Parafiscales ===
     # === Aportes Caja Compensacion ===
-    box_account_credit = fields.Many2one("account.account", string="Cuenta Caja Credito")
-    box_account_debit = fields.Many2one("account.account", string="Cuenta Caja Debito")
+    compensation_fund_credit = fields.Many2one("account.account", string="Cuenta Caja Credito")
+    compensation_fund_debit = fields.Many2one("account.account", string="Cuenta Caja Debito")
+
+    # === Aportes Sena ===
+    sena_credit = fields.Many2one("account.account", string="Cuenta Sena Credito")
+    sena_debit = fields.Many2one("account.account", string="Cuenta Sena Debito")
     
+    # === Aportes ICBF ===
+    icbf_credit = fields.Many2one("account.account", string="Cuenta ICBF Credito")
+    icbf_debit = fields.Many2one("account.account", string="Cuenta ICBF Debito")
     
   # === Bonificaciones ===
     # === Cesantias ===  

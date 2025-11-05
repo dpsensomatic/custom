@@ -120,6 +120,12 @@ class HrPayroll(models.Model):
                 'deductions':0.0,
                 'total_deductions':0.0,
                 
+                # === Aportes Parafiscales === 
+                'compensation_fund':0.0,
+                'sena':0.0,
+                'icbf':0.0,
+                'total_parafiscal':0.0,
+
                 # === Pagos A Prestaciones Sociales ===
                 'service_bonus':0.0,
                 'severance':0.0,
@@ -149,6 +155,11 @@ class HrPayroll(models.Model):
                 'health_debit': 0.0,
                 'pension_debit': 0.0,
                 'arl_debit': 0.0,
+                
+                # === Aportes Parafiscales ===
+                'compensation_fund': 0.0,
+                'sena': 0.0,
+                'icbf': 0.0,                
                 
                 # === Beneficios ===
                 'service_bonus_debit': 0.0,
@@ -193,10 +204,13 @@ class HrPayroll(models.Model):
             parameters = self.env['hr.payroll.mixin']._get_parameter(self.date_start)
             # === Ajustamos los parametros  ===
             transportation_allowance = parameters['transport_allowance']
-            company_pension_percentage = parameters['company_pension_percentage']
-            company_health_percentage = parameters['company_eps_percentage']
-            employee_eps_percentage = parameters['employee_eps_percentage']
-            employee_pension_percentage = parameters['employee_pension_percentage']
+            company_pension_pct = parameters['company_pension_pct']
+            company_health_pct = parameters['company_eps_pct']
+            employee_eps_pct = parameters['employee_eps_pct']
+            employee_pension_pct = parameters['employee_pension_pct']
+            compensation_fund_pct = parameters['compensation_fund_pct']
+            sena_pct = parameters['sena_pct']
+            icbf_pct = parameters['icbf_pct']
             minimun_wage = parameters['minimum_wage']
 
             # === Vacia Los Totales Del Diccionario Con Cada Ciclo ===            
@@ -225,7 +239,7 @@ class HrPayroll(models.Model):
             
             # === Calculo Auxilio De Transporte ===
             totals['transportation_allowance'] = self.env['hr.payroll.mixin']._compute_transport_allowance(
-                transport_base, totals['days_worked'], minimun_wage, transportation_allowance
+                transport_base, totals['days_worked'], minimun_wage, transportation_allowance, contract
             )
 
             # === Total A Pagar Al Trabajador ===
@@ -234,15 +248,19 @@ class HrPayroll(models.Model):
             # === Aportes A Seguridad Social (Salud, Pension, ARL) ===
             totals = self.env['hr.payroll.mixin']._compute_contributions(
                 totals,
-                company_health_percentage,
-                employee_eps_percentage,
-                company_pension_percentage,
-                employee_pension_percentage,
+                company_health_pct,
+                employee_eps_pct,
+                company_pension_pct,
+                employee_pension_pct,
                 minimun_wage,
                 contract,
             )
 
-            # === Aportes A Prestaciones Sociales (Prima, Cesantias, Vacaciones) ===
+            # === Aportes Parafiscales (Sena, ICBF, Cajas de compensacion)
+            totals = self.env['hr.payroll.mixin']._compute_parafiscal_contributions(totals, compensation_fund_pct, sena_pct, icbf_pct, minimun_wage, contract)
+            totals['total_parafiscal'] = totals['compensation_fund'] + totals['sena'] + totals['icbf'] 
+
+            # === Prestaciones Sociales (Prima, Cesantias, Vacaciones) ===
             # === Filtra Todos Los Eventos Que Pertenezcan A Incapacidades ===
             allowed_types = ['unpaid_leave']
             events =  events.filtered(lambda e: e.type in allowed_types)
@@ -257,7 +275,7 @@ class HrPayroll(models.Model):
             else:
                 totals['unpaid_leaves'] = 30
                 
-            totals = self.env['hr.payroll.mixin']._compute_benefits(totals, totals['unpaid_leaves'])
+            totals = self.env['hr.payroll.mixin']._compute_benefits(totals, totals['unpaid_leaves'], contract)
 
 
             # === Totales De Aportes A Seguridad Social (Salud, Pension, ARL) ===
@@ -266,7 +284,7 @@ class HrPayroll(models.Model):
             
 
             # Total A Pagar Empleador
-            totals['total_deductions'] = totals['deductions'] + totals['arl_contribution']
+            totals['total_deductions'] = totals['deductions'] + totals['arl_contribution'] + totals['company_pension_contribution'] + totals['company_health_contribution']
 
             # ========================
 
@@ -299,7 +317,13 @@ class HrPayroll(models.Model):
 
                 'deductions': totals['deductions'],
                 'total_deductions': totals['total_deductions'],
-
+                
+                # === Aportes Parafiscales ===
+                'compensation_fund': totals['compensation_fund'],
+                'sena': totals['sena'],
+                'icbf': totals['icbf'],
+                'total_parafiscal': totals['total_parafiscal'],
+                
                 # === Pagos A Prestaciones Sociales ===
                 'service_bonus': totals['service_bonus'],
                 'severance': totals['severance'],
@@ -482,14 +506,41 @@ class HrPayroll(models.Model):
         # === Aportes A Arl === 
         line_vals.append({
             'payroll_id': employee_lines.payroll_id.id,
-            'concept_name': 'Aportes A Arl Debit',
+            'concept_name': 'Aportes Arl Debito',
             'account_id': acc_config.arl_account_debit.id,
             'debit': employee_lines.arl_contribution,
             'credit': 0.0,
         })
-                    
-          #=== Beneficios ===   
         
+          # === Aportes Parafiscales
+        # === Caja De Compensacion ===
+        line_vals.append({
+            'payroll_id': employee_lines.payroll_id.id,
+            'concept_name': 'Aportes Caja De Compensacion Debito',
+            'account_id': acc_config.compensation_fund_debit.id,
+            'debit': employee_lines.compensation_fund,
+            'credit': 0.0,
+        })
+        
+        # === Sena ===
+        line_vals.append({
+            'payroll_id': employee_lines.payroll_id.id,
+            'concept_name': 'Aportes Sena Debito',
+            'account_id': acc_config.sena_debit.id,
+            'debit': employee_lines.sena,
+            'credit': 0.0,
+        })
+        
+        # === ICBF ===
+        line_vals.append({
+            'payroll_id': employee_lines.payroll_id.id,
+            'concept_name': 'Aportes ICBF Debito',
+            'account_id': acc_config.icbf_debit.id,
+            'debit': employee_lines.icbf,
+            'credit': 0.0,
+        })
+                    
+          # === Beneficios ===   
         # === Prima De Servicios ===
         line_vals.append({
             'payroll_id': employee_lines.payroll_id.id,
@@ -557,15 +608,43 @@ class HrPayroll(models.Model):
             'debit': 0.0,
             'credit': pension_credit,
         })
-        
+
         # === Aportes A Arl ===
         line_vals.append({
             'payroll_id': employee_lines.payroll_id.id,
-            'concept_name': 'Aportes A Arl Credit',
+            'concept_name': 'Aportes Arl Credito',
             'account_id': contract.arl_id.arl_account.id,
             'debit': 0.0,
             'credit': employee_lines.arl_contribution,
         })
+
+    # === Aportes Parafiscales === 
+        # === Caja De Compensacion ===
+        line_vals.append({
+            'payroll_id': employee_lines.payroll_id.id,
+            'concept_name': 'Aportes Caja De Compensacion',
+            'account_id': contract.compensation_fund_id.compensation_account.id,
+            'debit': 0.0,
+            'credit': employee_lines.compensation_fund,
+        })
+        # === Sena ===
+        line_vals.append({
+            'payroll_id': employee_lines.payroll_id.id,
+            'concept_name': 'Sena Credito',
+            'account_id': acc_config.sena_credit.id,
+            'debit': 0.0,
+            'credit': employee_lines.sena,
+        })
+        
+        # === ICBF ===
+        line_vals.append({
+            'payroll_id': employee_lines.payroll_id.id,
+            'concept_name': 'ICBF Credito',
+            'account_id': acc_config.icbf_credit.id,
+            'debit': 0.0,
+            'credit': employee_lines.icbf,
+        })
+        
         total_debit = sum(line['debit'] for line in line_vals)
         total_credit = sum(line['credit'] for line in line_vals)
         difference = round(total_debit - total_credit, 2)
@@ -583,7 +662,7 @@ class HrPayroll(models.Model):
                 'debit': adjust_value if adjust_type == 'debit' else 0.0,
                 'credit': adjust_value if adjust_type == 'credit' else 0.0,
             })   
-            ipdb.set_trace()
+
           
         self.env['hr.payroll.account.line'].create(line_vals)
     # ========================
@@ -621,6 +700,11 @@ class HrPayroll(models.Model):
         totals['health_debit'] = currency.round(sum(line.company_health_contribution for line in self.line_ids))
         totals['pension_debit'] = currency.round(sum(line.company_pension_contribution for line in self.line_ids))
         totals['arl_debit'] = currency.round(sum(line.arl_contribution for line in self.line_ids))
+        
+        # === Aportes Parafiscales === 
+        totals['compensation_fund'] = currency.round(sum(line.compensation_fund for line in self.line_ids))
+        totals['sena'] = currency.round(sum(line.sena for line in self.line_ids))
+        totals['icbf'] = currency.round(sum(line.icbf for line in self.line_ids))
 
         # === Beneficios ===
         totals['service_bonus_debit'] = currency.round(sum(line.service_bonus for line in self.line_ids))
@@ -649,30 +733,37 @@ class HrPayroll(models.Model):
         if not acc_config:
             return []
 
-        totales_por_cuenta = defaultdict(lambda: {'debit': 0.0, 'credit': 0.0, 'concept_name': ''})
+        totals_per_account = defaultdict(lambda: {'debit': 0.0, 'credit': 0.0, 'concept_name': ''})
 
         for line in payroll.line_ids:
             contract = line.contract_id
 
             # === Salud Crédito ===
             cuenta_salud = contract.eps_id.eps_account.id or acc_config.health_account_credit.id
-            totales_por_cuenta[cuenta_salud]['credit'] += currency.round(line.health_contribution)
-            totales_por_cuenta[cuenta_salud]['concept_name'] = 'Aportes A Salud Credito'
+            totals_per_account[cuenta_salud]['credit'] += currency.round((
+                line.health_contribution + line.company_health_contribution
+            ))
+            totals_per_account[cuenta_salud]['concept_name'] = 'Aportes A Salud Credito'
 
             # === Pensión Crédito ===
             cuenta_pension = contract.pension_fund_id.pension_account.id or acc_config.pension_account_credit.id
-            totales_por_cuenta[cuenta_pension]['credit'] += currency.round((
+            totals_per_account[cuenta_pension]['credit'] += currency.round((
                 line.pension_contribution + line.company_pension_contribution
             ))
-            totales_por_cuenta[cuenta_pension]['concept_name'] = 'Aportes Pensión Credito'
+            totals_per_account[cuenta_pension]['concept_name'] = 'Aportes Pensión Credito'
 
-            # === ARL Crédito ===
-            cuenta_arl = contract.arl_id.arl_account.id or acc_config.arl_account_credit.id
-            totales_por_cuenta[cuenta_arl]['credit'] += currency.round(line.arl_contribution)
-            totales_por_cuenta[cuenta_arl]['concept_name'] = 'Aportes A Arl Credito'
+            # === ARL Credito ===
+            arl_account = contract.arl_id.arl_account.id or acc_config.arl_account_credit.id
+            totals_per_account[arl_account]['credit'] += currency.round(line.arl_contribution)
+            totals_per_account[arl_account]['concept_name'] = 'Aportes Arl Credito'
+            
+            # === Caja de Compensacion Credito ===
+            compensation_account = contract.compensation_fund_id.compensation_account.id or acc_config.compensation_fund_credit.id
+            totals_per_account[compensation_account]['credit'] += currency.round(line.compensation_fund)
+            totals_per_account[compensation_account]['concept_name'] = 'Aportes Cajas De Compensacion'
 
         # Convertir diccionario a lista de líneas
-        for cuenta_id, datos in totales_por_cuenta.items():
+        for cuenta_id, datos in totals_per_account.items():
             if not cuenta_id:
                 continue
             line_vals.append({
@@ -792,10 +883,35 @@ class HrPayroll(models.Model):
         # === Aportes A Arl === 
         line_vals.append({
         'payroll_id': payroll.id,
-        'concept_name': 'Aportes A Arl Debit',
+        'concept_name': 'Aportes A Arl Debito',
         'account_id': acc_config.arl_account_debit.id,
         'debit': totals['arl_debit'],
         'credit': 0.0,
+        })
+        
+        # === Caja De Compensacion ===
+        line_vals.append({
+            'payroll_id': payroll.id,
+            'concept_name': 'Aportes Caja De Compensacion Debito',
+            'account_id': acc_config.compensation_fund_debit.id,
+            'debit': totals['compensation_fund'],
+            'credit': 0.0,
+        })
+        # === Sena ===
+        line_vals.append({
+            'payroll_id': payroll.id,
+            'concept_name': 'Aportes Sena Debito',
+            'account_id': acc_config.sena_debit.id,
+            'debit': totals['sena'],
+            'credit': 0.0,
+        })
+        # === ICBF ===
+        line_vals.append({
+            'payroll_id': payroll.id,
+            'concept_name': 'Aportes ICBF Debito',
+            'account_id': acc_config.icbf_debit.id,
+            'debit': totals['icbf'],
+            'credit': 0.0,
         })
         
           # === Beneficios ===   
@@ -848,6 +964,23 @@ class HrPayroll(models.Model):
         'debit': 0.0,
         'credit': totals['wages_credit'],
         })
+        
+        # === Sena ===
+        line_vals.append({
+            'payroll_id': payroll.id,
+            'concept_name': 'Aportes Sena Credito',
+            'account_id': acc_config.sena_credit.id,
+            'debit': 0.0,
+            'credit': totals['sena'],
+        })
+        # === ICBF ===
+        line_vals.append({
+            'payroll_id': payroll.id,
+            'concept_name': 'Aportes ICBF',
+            'account_id': acc_config.icbf_credit.id,
+            'debit': 0.0,
+            'credit': totals['icbf'],
+        })
             
         return line_vals
     # ========================
@@ -868,10 +1001,9 @@ class HrPayroll(models.Model):
         total_credit = sum(line['credit'] for line in lines_vals)
         difference = round(total_debit - total_credit, 2)
 
-        if abs(difference) >= 0.01:
+        if abs(difference) <= 0.01:
             adjust_type = 'debit' if difference < 0 else 'credit'
             adjust_value = abs(difference)
-
             lines_vals.append({
                 'payroll_id': payroll.id,
                 'concept_name': 'Ajuste por redondeo',
@@ -913,18 +1045,15 @@ class HrPayroll(models.Model):
             
             if payroll.move_id:
                 move = payroll.move_id
-                # Si está publicado, primero lo pasamos a borrador
-                if move.state == 'posted':
-                    move.button_draft()
 
-                    # Borrar líneas viejas y escribir las nuevas
-                    move.line_ids.unlink()
-                    move.write({
-                        'journal_id': journal.id,
-                        'date': payroll.date_end,
-                        'ref': payroll.name,
-                        'line_ids': clean_line_vals,
-                    })
+                # Borrar líneas viejas y escribir las nuevas
+                move.line_ids.unlink()
+                move.write({
+                    'journal_id': journal.id,
+                    'date': payroll.date_end,
+                    'ref': payroll.name,
+                    'line_ids': clean_line_vals,
+                })
             else:
                 move = self.env['account.move'].create({
                     'journal_id': journal.id,
@@ -946,5 +1075,5 @@ class HrPayroll(models.Model):
         for payroll in self:
             if payroll.move_id and payroll.move_id.state == 'posted':
                 payroll.move_id.button_draft()
-            payroll.state = 'draft'
+                payroll.state = 'draft'
     # ========================

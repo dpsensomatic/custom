@@ -44,9 +44,9 @@
                                     <field name="concept" />
                                     <field name="start_date" />
                                     <field name="end_date" />
-                                    <field name="days_period" />
+                                    <field name="period_days" />
                                     <field name="absences" />
-                                    <field name="days_settlement" />
+                                    <field name="settlement_days" />
                                     <field name="average_wage" />
                                     <field name="value_wage" />
                                     <field name="advances" />
@@ -58,9 +58,9 @@
                                         <field name="concept" />
                                         <field name="start_date" />
                                         <field name="end_date" />
-                                        <field name="days_period" />
+                                        <field name="period_days" />
                                         <field name="absences" />
-                                        <field name="days_settlement" />
+                                        <field name="settlement_days" />
                                         <field name="average_wage" />
                                         <field name="value_wage" />
                                         <field name="advances" />

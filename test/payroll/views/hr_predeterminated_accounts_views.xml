@@ -31,7 +31,11 @@
                         <field name="health_account_debit" />
                         <field name="pension_account_debit" />
                         <field name="arl_account_debit" />
-                        <field name="box_account_debit" />
+                    </group>
+                    <group string='Aportes Parafiscales'>
+                        <field name="compensation_fund_debit" />
+                        <field name="sena_debit" />
+                        <field name="icbf_debit" />
                     </group>
                     <group string='Bonificaciones'>
                         <field name="severance_account_debit" />
@@ -61,7 +65,11 @@
                         <field name="health_account_credit" />
                         <field name="pension_account_credit" />
                         <field name="arl_account_credit" />
-                        <field name="box_account_credit" />
+                    </group>
+                    <group string='Aportes Parafiscales'>
+                        <field name="compensation_fund_credit" />
+                        <field name="sena_credit" />
+                        <field name="icbf_credit" />
                     </group>
                     <group string='Bonificaciones'>
                         <field name="severance_account_credit" />

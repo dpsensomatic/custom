@@ -32,6 +32,12 @@ class HrPayrollLine(models.Model):
     deductions = fields.Float(string="Deducciones", store=True)
     total_deductions = fields.Float(string="Total Deducciones", store=True)
     
+    # === Aportes Parafiscales
+    compensation_fund = fields.Float(string="Caja de Compensacion", store=True)
+    sena = fields.Float(string="Sena", store=True)
+    icbf = fields.Float(string="ICBF", store=True)
+    total_parafiscal = fields.Float(string="Total Parafiscal", store=True)
+    
     #prestaciones sociales
     service_bonus = fields.Float(string="Prima", store=True)
     severance = fields.Float(string="Cesantías", store=True)

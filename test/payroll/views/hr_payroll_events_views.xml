@@ -40,7 +40,7 @@
                 <field name='date'/>
                 <field name='quantity'/>
                 <field name='date_end'/>
-                <field name='unit'/>
+                <field name='fixed_value'/>
             </list>
         </field>
     </record>

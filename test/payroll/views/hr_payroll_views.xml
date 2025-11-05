@@ -61,6 +61,10 @@
                                     <field name='other_deductions' />
                                     <field name="deductions" />
                                     <field name="total_deductions" />
+                                    <field name="compensation_fund" />
+                                    <field name="sena" />
+                                    <field name="icbf" />
+                                    <field name="total_parafiscal" />
                                     <field name="service_bonus" />
                                     <field name="severance" />
                                     <field name="interest_on_severance" />
@@ -90,6 +94,10 @@
                                         <field name='other_deductions' />
                                         <field name="deductions" />
                                         <field name="total_deductions" />
+                                        <field name="compensation_fund" />
+                                        <field name="sena" />
+                                        <field name="icbf" />
+                                        <field name="total_parafiscal" />
                                         <field name="service_bonus" />
                                         <field name="severance" />
                                         <field name="interest_on_severance" />
