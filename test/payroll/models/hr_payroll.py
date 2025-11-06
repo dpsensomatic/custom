@@ -88,20 +88,22 @@ class HrPayroll(models.Model):
     # ========================
     # Helpers pequeños
     # ========================
-    def _empty_totals(self):
+    def _empty_totals(self, employee, contract):
         """Diccionario base con todas las claves que usamos.
         Si agregas nuevos componentes, añádelos aquí."""
         return { 
                 # === Datos Del Empleado Y Contrato ===
-                'employee_id':0.0,
-                'contract_id': 0.0,
-                'base_wage': 0.0,
+                'employee_id': employee.name,
+                'contract_id': contract.id,
+                'base_wage': contract.wage,
                 
                 # === Salario Ajustado Por Las Novedades ===
+                'average_wage':0.0,
                 'wage_earned': 0.0,
                 'days_worked': 0.0,
-                'unpaid_days': 0.0,
+                'incapacity_days': 0.0,
                 'sick_leave': 0.0,
+                'absences':0.0,
                 'overtime_hours': 0.0,
                 'transportation_allowance': 0.0,
                 'commissions': 0.0,
@@ -190,7 +192,6 @@ class HrPayroll(models.Model):
         # ========================
         # Trae Todos los empleados con sus contratos
         # ========================
-        
         # === Trae Todos Los Empleado Creados En Hr_Employee ===
         employees = self.env['hr.payroll.mixin']._get_employees_with_contracts(self.date_start, self.date_end)
         lines = []
@@ -199,9 +200,10 @@ class HrPayroll(models.Model):
         for employee, contract in employees.items():
 
             # === Trae Los Eventos Por Empleado Segun Fecha De La Nomina ===
-             
-            events = self.env['hr.payroll.mixin']._get_events(employee.id, self.date_start, self.date_end)
-            parameters = self.env['hr.payroll.mixin']._get_parameter(self.date_start)
+            dates = self.env['hr.payroll.mixin']._split_event_dates(contract.date_start, contract.date_end, self.date_start, self.date_end)
+
+            events = self.env['hr.payroll.mixin']._get_events(employee.id, dates['o1'], dates['o2'])
+            parameters = self.env['hr.payroll.mixin']._get_parameter(dates['o1'])
             # === Ajustamos los parametros  ===
             transportation_allowance = parameters['transport_allowance']
             company_pension_pct = parameters['company_pension_pct']
@@ -214,23 +216,22 @@ class HrPayroll(models.Model):
             minimun_wage = parameters['minimum_wage']
 
             # === Vacia Los Totales Del Diccionario Con Cada Ciclo ===            
-            totals = self._empty_totals()
-
+            totals = self._empty_totals(employee, contract)
 
             # === Calculo De Los Dias Trabajados ===
-            totals = self.env['hr.payroll.mixin']._compute_days_worked(events, totals,  self.date_start, self.date_end)
-
+            totals = self.env['hr.payroll.mixin']._compute_days_worked(events, totals,  dates['o1'], dates['o2'], dates)
+            
             # === Calculo De Los Eventos Sin Incapacidad
             incapacity_types = ['sick_leave', 'unpaid_leave', 'arl_leave']
             events_worked =  events.filtered(lambda e: e.type not in incapacity_types)
             if events_worked:
                 for ev in events_worked:
-                    vals = ev._compute_value(totals['unpaid_days']) or {}
-                for k, v in vals.items():
-                    try:
-                        totals[k] = totals.get(k, 0.0) + float(v or 0.0)
-                    except Exception:
-                        pass
+                    vals = ev._compute_value(totals['incapacity_days']) or {}
+                    for k, v in vals.items():
+                        try:
+                            totals[k] = totals.get(k, 0.0) + float(v or 0.0)
+                        except Exception:
+                            pass
 
             # === Calculo del Salario segun incapacidades ===
             totals['wage_earned'] = contract.wage * (totals['days_worked'] / 30)
@@ -263,19 +264,23 @@ class HrPayroll(models.Model):
             # === Prestaciones Sociales (Prima, Cesantias, Vacaciones) ===
             # === Filtra Todos Los Eventos Que Pertenezcan A Incapacidades ===
             allowed_types = ['unpaid_leave']
-            events =  events.filtered(lambda e: e.type in allowed_types)
+            unpaid_events =  events.filtered(lambda e: e.type in allowed_types)
 
-            if events:
+            if unpaid_events:
                 # === Se Seccionan Las Fechas Y Se Traen Los Totales De Dias De Incapacidad ===
-                split_dates = self.env['hr.payroll.mixin']._split_event_dates(events, self.date_start, self.date_end)
+                split_dates = []
+                for unpaid_event in unpaid_events:
+                    result = self.env['hr.payroll.mixin']._split_event_dates(unpaid_event.date, unpaid_event.date_end, self.date_start, self.date_end)
+                    if result:
+                        split_dates.append(result)
 
-
-                totals['unpaid_days'] = self.env['hr.payroll.mixin']._compute_all_unpaid_days(split_dates)
-                totals['unpaid_leaves'] = self.env['hr.payroll.mixin']._adjust_days_worked(split_dates, totals['unpaid_days'])
+                totals['incapacity_days'] = self.env['hr.payroll.mixin']._compute_all_unpaid_days(split_dates)
+                totals['absences'] = self.env['hr.payroll.mixin']._adjust_days_worked(split_dates, totals['incapacity_days'], dates)
             else:
-                totals['unpaid_leaves'] = 30
-                
-            totals = self.env['hr.payroll.mixin']._compute_benefits(totals, totals['unpaid_leaves'], contract)
+                totals['absences']= self.env['hr.payroll.mixin']._adjust_days_worked_unique(dates)
+
+            totals = self.env['hr.payroll.mixin']._compute_benefits(totals, totals['absences'], contract)
+
 
 
             # === Totales De Aportes A Seguridad Social (Salud, Pension, ARL) ===
@@ -300,6 +305,7 @@ class HrPayroll(models.Model):
                 # === Salario Ajustado Por Las Novedades ===
                 'wage_earned': totals['wage_earned'],
                 'days_worked': totals['days_worked'],
+                'absences': totals['absences'],
                 'sick_leave': totals['sick_leave'],
                 'overtime_hours': totals['overtime_hours'],
                 'transportation_allowance': totals['transportation_allowance'],

@@ -13,6 +13,7 @@ class HrPayrollLine(models.Model):
     base_wage = fields.Float(string="Salario Base")
     wage_earned = fields.Float(string='Salario Ajustado')
     days_worked = fields.Float(string="Dias Trabajados")
+    absences = fields.Float(string="Ausencias")
     transportation_allowance = fields.Float(string="Transporte")
 
     # Devengados (ingresos adicionales)

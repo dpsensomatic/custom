@@ -47,6 +47,7 @@
                                     <field name="base_wage" />
                                     <field name="wage_earned" />
                                     <field name="days_worked" />
+                                    <field name="absences" />
                                     <field name="sick_leave" />
                                     <field name="overtime_hours" />
                                     <field name="transportation_allowance" />
@@ -80,6 +81,7 @@
                                         <field name="base_wage" />
                                         <field name="wage_earned" />
                                         <field name="days_worked" />
+                                        <field name="absences" />
                                         <field name="sick_leave" />
                                         <field name="overtime_hours" />
                                         <field name="transportation_allowance" />
