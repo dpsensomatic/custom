@@ -13,6 +13,8 @@ class HrPayrollLine(models.Model):
     base_wage = fields.Float(string="Salario Base")
     wage_earned = fields.Float(string='Salario Ajustado')
     days_worked = fields.Float(string="Dias Trabajados")
+    days_to_work = fields.Float(string="Dias a trabajar")
+    incapacity_days = fields.Float(string="Dias totales de incapacidad")
     absences = fields.Float(string="Ausencias")
     transportation_allowance = fields.Float(string="Transporte")
 

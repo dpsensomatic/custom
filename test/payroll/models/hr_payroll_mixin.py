@@ -118,17 +118,17 @@ class HrPayrollMixin(models.AbstractModel):
         
         # === Filtra Todos Los Eventos Que Pertenezcan A Incapacidades ===
         allowed_types = ['sick_leave', 'unpaid_leave', 'arl_leave']
-        events =  events.filtered(lambda e: e.type in allowed_types)
-        contract_dates = dates['o2'].day - dates['o1'].day + 1
+        allowed_events =  events.filtered(lambda e: e.type in allowed_types)
         
         # === Si No Hay Eventos Se Guardan Los Dias Trabajados En 30 ===
-        if not events: 
-            totals['days_worked']= self._adjust_days_worked_unique(dates)
+        if not allowed_events: 
+            totals['days_to_work']= self._adjust_days_worked_unique(dates)
+            totals['days_worked'] = totals['days_to_work']
             return totals
         
         # === Se Seccionan Las Fechas Y Se Traen Los Totales De Dias De Incapacidad ===
         split_dates=[]
-        for event in events:
+        for event in allowed_events:
             result = self._split_event_dates(event.date, event.date_end, date_start, date_end)
             if result:
                 split_dates.append(result)
@@ -136,18 +136,19 @@ class HrPayrollMixin(models.AbstractModel):
         totals['incapacity_days'] = self._compute_all_unpaid_days(split_dates)
 
         # === Se Ajustan Los Dias Trabajados Segun Los Dias Del Mes === 
-        totals['days_worked']= self._adjust_days_worked(split_dates, totals['incapacity_days'],dates)
+        totals['days_to_work'] = self._adjust_days_worked_unique(dates)
+        totals['days_worked']= self._adjust_days_worked(split_dates, totals['incapacity_days'],totals['days_to_work'])
 
         # === Recorre Los Eventos Trayendo Los Valores Segun Incapacidades ===
         for ev, split in zip(events, split_dates):
             
             # === Trae La Incapacidad Por Cada Evento === 
-            totals['incapacity_days'] = 0.0
-            totals['incapacity_days'] = self._compute_single_unpaid_days(split, totals)
+            totals['incapacity_days_unique'] = 0.0
+            totals['incapacity_days_unique'] = self._compute_single_unpaid_days(split, totals)
             
             
             # === Llama a la funcion encargada de asignar los valores segun el diccionario ===
-            vals = ev._compute_value(totals['incapacity_days']) or {}
+            vals = ev._compute_value(totals['incapacity_days_unique']) or {}
             for k, v in vals.items():
                 try:
                     totals[k] = totals.get(k, 0.0) + float(v or 0.0)
@@ -221,9 +222,9 @@ class HrPayrollMixin(models.AbstractModel):
     # Recibe los parametros anuales y retorna los totales de las prestaciones sociales
     # ========================
     @api.model
-    def _compute_benefits(self, totals, days_worked, contract):
+    def _compute_benefits(self, totals,  wage_per_day, days_to_work, absences, contract):
         
-        wage_per_day = totals['base_wage']/30
+        days_worked = days_to_work - absences
         totals['average_wage'] = (wage_per_day*days_worked)+ totals['commissions'] + totals['transportation_allowance']
         
         if not contract.sena_apprentice and not contract.apprentice_type == 'academic':  
@@ -382,17 +383,6 @@ class HrPayrollMixin(models.AbstractModel):
     # ========================
 
         
-    # ========================
-    # Computa El Total De Los Dias De Incapacidad
-    # ========================
-    def _compute_all_unpaid_days(self, split_dates):
-        totals = 0
-        for split in split_dates:
-            unpaid_days = split['o2'].day - split['o1'].day + 1
-            totals +=  unpaid_days
-
-        return totals
-    # ========================
     
     
     # ========================
@@ -415,16 +405,34 @@ class HrPayrollMixin(models.AbstractModel):
     # ========================
     # Adjusta Los Dias  Trabajados Segun La Cantidad De Dias Del Mes
     # ========================    
-    def _adjust_days_worked(self, split_dates, unpaid_days, dates):
-        days_worked_temporal = dates['o2'].day-dates['o1'].day + 1
-        if split_dates[0]['d1'].month == 2 and unpaid_days < 15:
-            days_worked = days_worked_temporal - unpaid_days +2
-        elif split_dates[0]['d2'].day == 31 and unpaid_days < 15:
-            days_worked = days_worked_temporal - unpaid_days - 1
+    def _adjust_days_worked(self, split_dates, incapacity_days, days_to_work):
+        if (split_dates[0]['d1'].month == 2 and incapacity_days < 25 and days_to_work > 25):
+            days_worked = days_to_work - incapacity_days +2
+            if incapacity_days >= days_to_work:
+                days_worked = days_to_work - incapacity_days
+        elif (split_dates[0]['d2'].day == 31 and incapacity_days < 30 and days_to_work > 30): 
+            days_worked = days_to_work - incapacity_days - 1
         else:
-            days_worked = days_worked_temporal - unpaid_days
+            days_worked = days_to_work - incapacity_days
 
         return days_worked
+    # ========================
+    
+    
+    # ========================
+    # Computa El Total De Los Dias De Incapacidad
+    # ========================
+    def _compute_all_unpaid_days(self, split_dates):
+        totals = 0
+        for split in split_dates:
+            unpaid_days = split['o2'].day - split['o1'].day + 1
+            if split['d1'].month == 2 and unpaid_days > 25:
+                unpaid_days = split['o2'].day - split['o1'].day + 3
+            if split['d2'].day == 31 and unpaid_days > 30:
+                unpaid_days = split['o2'].day - split['o1'].day 
+            totals +=  unpaid_days
+
+        return totals
     # ========================
     
     
@@ -434,11 +442,11 @@ class HrPayrollMixin(models.AbstractModel):
     def _compute_single_unpaid_days(self, split, totals):
         # === Dias no trabajados ===
             unpaid_days = split['o2'].day - split['o1'].day + 1
-            if split['d1'].month == 2 and unpaid_days > 15:
+            if split['d1'].month == 2 and unpaid_days > 25:
                 unpaid_days = split['o2'].day - split['o1'].day + 3
-            if split['d2'].day == 31 and unpaid_days > 15:
+            if split['d2'].day == 31 and unpaid_days > 30:
                 unpaid_days = split['o2'].day - split['o1'].day 
-            totals['incapacity_days'] = totals.get('incapacity_days', 0) + unpaid_days
-            return totals['incapacity_days']
+            totals['incapacity_days_unique'] = totals.get('incapacity_days_unique', 0) + unpaid_days
+            return totals['incapacity_days_unique']
     # ========================
 # ========================

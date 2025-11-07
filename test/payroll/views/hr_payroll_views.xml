@@ -47,6 +47,8 @@
                                     <field name="base_wage" />
                                     <field name="wage_earned" />
                                     <field name="days_worked" />
+                                    <field name="days_to_work" />
+                                    <field name="incapacity_days" />
                                     <field name="absences" />
                                     <field name="sick_leave" />
                                     <field name="overtime_hours" />
@@ -81,6 +83,8 @@
                                         <field name="base_wage" />
                                         <field name="wage_earned" />
                                         <field name="days_worked" />
+                                        <field name="days_to_work" />
+                                        <field name="incapacity_days" />
                                         <field name="absences" />
                                         <field name="sick_leave" />
                                         <field name="overtime_hours" />

@@ -99,9 +99,12 @@ class HrPayroll(models.Model):
                 
                 # === Salario Ajustado Por Las Novedades ===
                 'average_wage':0.0,
+                'wage_per_day':0.0,
                 'wage_earned': 0.0,
+                'days_to_work': 0.0,
                 'days_worked': 0.0,
                 'incapacity_days': 0.0,
+                'incapacity_days_unique': 0.0,
                 'sick_leave': 0.0,
                 'absences':0.0,
                 'overtime_hours': 0.0,
@@ -234,7 +237,9 @@ class HrPayroll(models.Model):
                             pass
 
             # === Calculo del Salario segun incapacidades ===
-            totals['wage_earned'] = contract.wage * (totals['days_worked'] / 30)
+            totals['wage_per_day'] =contract.wage / 30
+            totals['wage_earned'] = totals['wage_per_day'] * totals['days_worked']
+            totals['wage_earned'] = totals['wage_earned']
             totals['parafiscal_base'] = totals['wage_earned'] + totals['commissions'] + totals['overtime_hours']
             transport_base = totals['parafiscal_base'] 
             
@@ -274,12 +279,10 @@ class HrPayroll(models.Model):
                     if result:
                         split_dates.append(result)
 
-                totals['incapacity_days'] = self.env['hr.payroll.mixin']._compute_all_unpaid_days(split_dates)
-                totals['absences'] = self.env['hr.payroll.mixin']._adjust_days_worked(split_dates, totals['incapacity_days'], dates)
+                totals['absences'] = self.env['hr.payroll.mixin']._compute_all_unpaid_days(split_dates)
             else:
-                totals['absences']= self.env['hr.payroll.mixin']._adjust_days_worked_unique(dates)
-
-            totals = self.env['hr.payroll.mixin']._compute_benefits(totals, totals['absences'], contract)
+                totals['absences']= 0
+            totals = self.env['hr.payroll.mixin']._compute_benefits(totals, totals['wage_per_day'], totals['days_to_work'], totals['absences'],  contract)
 
 
 
@@ -290,9 +293,9 @@ class HrPayroll(models.Model):
 
             # Total A Pagar Empleador
             totals['total_deductions'] = totals['deductions'] + totals['arl_contribution'] + totals['company_pension_contribution'] + totals['company_health_contribution']
-
+            
             # ========================
-
+            print(employee.name, totals['average_wage'])
             # ========================
             # Crea Las Lineas Con La Informacion Recolectada
             # ========================
@@ -305,6 +308,8 @@ class HrPayroll(models.Model):
                 # === Salario Ajustado Por Las Novedades ===
                 'wage_earned': totals['wage_earned'],
                 'days_worked': totals['days_worked'],
+                'days_to_work': totals['days_to_work'],
+                'incapacity_days': totals['incapacity_days'],
                 'absences': totals['absences'],
                 'sick_leave': totals['sick_leave'],
                 'overtime_hours': totals['overtime_hours'],
