@@ -13,6 +13,8 @@ access_hr_eps_entity,hr.eps_entity,model_hr_eps_entity,base.group_user,1,1,1,1
 access_hr_arl_entity,hr.arl_entity,model_hr_arl_entity,base.group_user,1,1,1,1
 access_hr_pension_fund,hr.pension_fund,model_hr_pension_fund,base.group_user,1,1,1,1
 access_hr_compensation_fund,hr.compensation_fund,model_hr_compensation_fund,base.group_user,1,1,1,1
+access_hr_service_bonus,hr.service_bonus,model_hr_service_bonus,base.group_user,1,1,1,1
+access_hr_service_bonus_line,hr.service_bonus_line,model_hr_service_bonus_line,base.group_user,1,1,1,1
 
 
 

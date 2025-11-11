@@ -3,6 +3,11 @@ from odoo import models, fields, api
 from odoo.exceptions import UserError
 from datetime import timedelta
 from collections import defaultdict
+from io import BytesIO
+from zipfile import ZipFile
+import base64
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
 import ipdb
 import logging
 import ast
@@ -996,6 +1001,7 @@ class HrPayroll(models.Model):
         return line_vals
     # ========================
 
+    
 
     # ========================
     # Redondea Los Decimales 
@@ -1088,3 +1094,60 @@ class HrPayroll(models.Model):
                 payroll.move_id.button_draft()
                 payroll.state = 'draft'
     # ========================
+    
+    # ========================
+    # Genera Los Desprendibles De Nomina
+    # ========================
+    def action_generate_payslip_pdf(self):
+        """Genera un PDF por cada empleado y devuelve un ZIP descargable."""
+        for payroll in self:
+            zip_buffer = BytesIO()
+
+            # Crear un archivo ZIP en memoria
+            with ZipFile(zip_buffer, 'w') as zip_file:
+                for line in payroll.line_ids:
+                    buffer = BytesIO()
+                    pdf = canvas.Canvas(buffer, pagesize=A4)
+
+                    # --- Encabezado ---
+                    pdf.setFont("Helvetica-Bold", 14)
+                    pdf.drawString(50, 800, "DESPRENDIBLE DE NÓMINA")
+
+                    pdf.setFont("Helvetica", 11)
+                    pdf.drawString(50, 780, f"Empleado: {line.employee_id.name or ''}")
+                    pdf.drawString(50, 765, f"Nómina: {payroll.name}")
+                    pdf.drawString(50, 750, f"Periodo: {payroll.date_start} - {payroll.date_end}")
+                    pdf.line(50, 745, 550, 745)
+
+                    # --- Detalle ---
+                    y = 730
+                    pdf.drawString(60, y, f"Neto a pagar: {line.net:.2f}")
+
+                    # Guardar PDF
+                    pdf.save()
+                    pdf_data = buffer.getvalue()
+                    buffer.close()
+
+                    # Añadir PDF al ZIP
+                    file_name = f"{line.employee_id.name or 'Empleado'}.pdf"
+                    zip_file.writestr(file_name, pdf_data)
+
+            # Guardar el ZIP en un adjunto
+            zip_buffer.seek(0)
+            attachment = self.env['ir.attachment'].create({
+                'name': f'Desprendibles_{payroll.name}.zip',
+                'type': 'binary',
+                'datas': base64.b64encode(zip_buffer.read()),
+                'res_model': 'hr.payroll',
+                'res_id': payroll.id,
+                'mimetype': 'application/zip',
+            })
+
+            # Descargar el ZIP
+            return {
+                'type': 'ir.actions.act_url',
+                'url': f'/web/content/{attachment.id}?download=true',
+                'target': 'new',
+            }
+            # ========================
+            

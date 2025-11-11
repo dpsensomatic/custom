@@ -66,11 +66,11 @@ class HrPayrollSettlement(models.Model):
     # ========================
     #  Vacia Los Totales Que Hayan En Los Diccionarios
     # ========================
-    def _empty_totals(self):
+    def _empty_totals(self, concept):
         """Diccionario base con todas las claves que usamos.
         Si agregas nuevos componentes, añádelos aquí."""
         return {                 
-            'concept': 0.0,
+            'concept': concept,
             'start_date': 0.0,
             'end_date': 0.0,
             'period_days': 0.0,
@@ -124,7 +124,9 @@ class HrPayrollSettlement(models.Model):
         # === Filtra Lo Eventos Y Trae Los Existententes Dentro Del Periodo ===
         if concept == 'prima':
             start_date_prima = date(2025,7,1)
-            if start_date_prima >= self.contract_start_date:
+            if start_date_prima > self.cutoff_date:
+                events = self.env["hr.payroll.mixin"]._get_events(self.employee_id.id, self.contract_start_date, self.cutoff_date)
+            elif start_date_prima >= self.contract_start_date:
                 events = self.env["hr.payroll.mixin"]._get_events(self.employee_id.id, start_date_prima, self.cutoff_date)
             else:
                 d1 = fields.Date.from_string(self.contract_start_date)
@@ -143,7 +145,7 @@ class HrPayrollSettlement(models.Model):
         # ========================
 
         # === Inicializa El Diccionario ===
-        totals = self._empty_totals()
+        totals = self._empty_totals(concept)
                 
         # === Trae El Sueldo Del Contrato ===
         totals['contract_wage'] = self.employee_id.contract_id.wage
@@ -176,7 +178,7 @@ class HrPayrollSettlement(models.Model):
 
         for commission in commissions_events:
             totals['commissions_value'] += commission.fixed_value
-
+        
         totals = self.env['hr.payroll.mixin']._compute_settlement_totals(totals,
                                                                          totals['contract_wage'], 
                                                                          totals['settlement_days'],
@@ -188,6 +190,7 @@ class HrPayrollSettlement(models.Model):
         
         # === Calculo De Los Conceptos A Liquidar ===
         totals = self.env['hr.payroll.mixin']._calculate_liquidated_wage(concept, totals)
+        
         return {
             'concept': concept.replace('_', ' ').title(),
             'start_date': self.employee_id.contract_id.date_start,

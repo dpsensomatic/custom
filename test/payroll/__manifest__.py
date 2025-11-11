@@ -14,7 +14,7 @@ Este modulo crea la estructura para la gestion de la nomina ajustada a la legisl
     'version': '0.1',
 
     # any module necessary for this one to work correctly
-    'depends': ['base', 'hr'],
+    'depends': ['base', 'hr','hr_contract'],
 
     # always loaded
     'data': [
@@ -30,6 +30,7 @@ Este modulo crea la estructura para la gestion de la nomina ajustada a la legisl
         'views/hr_compensation_fund_views.xml',
         'views/hr_payroll_views.xml',
         'views/hr_predeterminated_accounts_views.xml',
+        'views/hr_service_bonus_views.xml',        
     ],
     'installable': True,
     'application': True,

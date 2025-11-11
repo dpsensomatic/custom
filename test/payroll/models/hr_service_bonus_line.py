@@ -1,20 +1,18 @@
 from odoo import fields, models
 
-class HrPayrollSettlementLine(models.Model):
-    _name = "hr.payroll.settlement.line"
-    _description = "Línea De Prima De Servicios"
+class HrServiceBonusLine(models.Model):
+    _name = "hr.service.bonus.line"
+    _description = "Línea de Prima de Servicios"
 
-    date = fields.Date()
-    concept = fields.Char()
-    value = fields.Float()
-    origin = fields.Char()
-    
-    state = fields.Selection([
-        ('draft', 'Borrador'),
-        ('done', 'Validado'),
-        ('cancelled', 'Cancelado')
-    ], string='Estado', default='draft', required=True)
-    
-    employee_id = fields.Many2one('hr.employee', string="Empleado", required=True)
-    contract_id = fields.Many2one("hr.contract", string="Contrato", required=True)
-    service_bonus = fields.Many2one('hr.service.bonus', string="Prima", ondelete='cascade')
+    service_id = fields.Many2one('hr.payroll.settlement', string="Liquidación", ondelete='cascade')
+    concept = fields.Char(string="Concepto")
+    start_date = fields.Date(string="Fecha Inicial")
+    end_date = fields.Date(string="Fecha Final")
+    period_days = fields.Float(string="Días Período")
+    absences = fields.Float(string="Ausencia")
+    settlement_days = fields.Float(string="Días Liq.")
+    average_wage = fields.Monetary(string="Salario Promedio")
+    value_wage = fields.Monetary(string="Vr Líquid.")
+    advances = fields.Monetary(string="Anticipos")
+    net_value = fields.Monetary(string="Valor Neto")
+    currency_id = fields.Many2one('res.currency', default=lambda self: self.env.company.currency_id)

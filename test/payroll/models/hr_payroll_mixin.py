@@ -252,7 +252,9 @@ class HrPayrollMixin(models.AbstractModel):
         # === Trae El Total De Dias Laborales ===
         if concept == 'prima':
             start_date_prima = date(2025,7,1)
-            if start_date_prima >= start_date:
+            if start_date_prima > end_date:
+                totals['period_days'] = self._calculate_total_settlement_days(start_date, end_date)
+            elif start_date_prima >= start_date:
                 totals['period_days'] = self._calculate_total_settlement_days(start_date_prima, end_date)
             else:
                 d1 = fields.Date.from_string(start_date)
@@ -268,6 +270,24 @@ class HrPayrollMixin(models.AbstractModel):
         
         return totals
     # ========================
+    
+    
+        # ========================
+    # Computa Los Dias A Liquidar
+    # ========================
+    def _compute_service_bonus_days(self, events, start_date, end_date, totals):
+        
+        # === Trae El Total De Dias Laborales ===
+        totals['period_days'] = self._calculate_total_settlement_days(start_date, end_date)
+
+
+        if not events:
+            totals['settlement_days'] = totals['period_days']   
+            return totals
+        
+        return totals
+    # ========================
+
 
 
     # ========================
@@ -282,7 +302,8 @@ class HrPayrollMixin(models.AbstractModel):
             total_base_wage = (contract_wage*total_months)+commissions
         else:
             total_base_wage = (contract_wage*total_months)+commissions + transport_value
-            
+        
+         
         # === Arroja El Total Descontando Las Licencias No Remuneradas
         total_absence_base_wage = total_base_wage-((contract_wage/30)*absences)
         
