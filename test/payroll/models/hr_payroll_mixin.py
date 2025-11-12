@@ -190,12 +190,12 @@ class HrPayrollMixin(models.AbstractModel):
         """Recibe el valor base de las contribuciones y aplica los cálculos."""
         arl_fee_pct= self._assign_arl(contract.arl_fee)
         if totals['gross'] >= minimum_wage*10 or contract.sena_apprentice:
-            totals['company_health_contribution'] = totals['gross'] * company_eps_pct / 100.0
+            totals['company_health_contribution'] = totals['parafiscal_base'] * company_eps_pct / 100.0
         if not contract.sena_apprentice and not contract.apprentice_type == 'academic':  
-            totals['company_pension_contribution'] = (totals['gross'] * company_pension_pct / 100.0)
-            totals['pension_contribution'] = totals['gross'] * employee_pension_pct / 100.0
-            totals['health_contribution'] = totals['gross'] * employee_eps_pct / 100.0
-        totals['arl_contribution'] = totals['gross'] * arl_fee_pct / 100.0
+            totals['company_pension_contribution'] = (totals['parafiscal_base'] * company_pension_pct / 100.0)
+            totals['pension_contribution'] = totals['parafiscal_base'] * employee_pension_pct / 100.0
+            totals['health_contribution'] = totals['parafiscal_base'] * employee_eps_pct / 100.0
+        totals['arl_contribution'] = totals['parafiscal_base'] * arl_fee_pct / 100.0
         return totals
     # ========================
     
@@ -208,10 +208,10 @@ class HrPayrollMixin(models.AbstractModel):
                                icbf_pct, minimum_wage, contract):
         """Recibe el valor base de las contribuciones y aplica los cálculos."""
         if totals['gross'] >= minimum_wage*10:
-            totals['sena'] = totals['gross'] * sena_pct / 100.0
-            totals['icbf'] = totals['gross'] * icbf_pct / 100.0
+            totals['sena'] = totals['parafiscal_base'] * sena_pct / 100.0
+            totals['icbf'] = totals['parafiscal_base'] * icbf_pct / 100.0
         if contract.compensation_check:
-            totals['compensation_fund'] = (totals['gross'] * compensation_fund_pct / 100.0)
+            totals['compensation_fund'] = (totals['parafiscal_base'] * compensation_fund_pct / 100.0)
 
 
         return totals

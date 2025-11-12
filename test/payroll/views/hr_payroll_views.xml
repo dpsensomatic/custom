@@ -72,7 +72,7 @@
                                     <field name="compensation_fund" />
                                     <field name="sena" />
                                     <field name="icbf" />
-                                    <field name="total_parafiscal" />
+                                    <field name="total_contribution_parafiscal" />
                                     <field name="service_bonus" />
                                     <field name="severance" />
                                     <field name="interest_on_severance" />
@@ -108,7 +108,7 @@
                                         <field name="compensation_fund" />
                                         <field name="sena" />
                                         <field name="icbf" />
-                                        <field name="total_parafiscal" />
+                                        <field name="total_contribution_parafiscal" />
                                         <field name="service_bonus" />
                                         <field name="severance" />
                                         <field name="interest_on_severance" />

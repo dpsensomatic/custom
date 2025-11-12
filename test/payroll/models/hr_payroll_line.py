@@ -39,7 +39,7 @@ class HrPayrollLine(models.Model):
     compensation_fund = fields.Float(string="Caja de Compensacion", store=True)
     sena = fields.Float(string="Sena", store=True)
     icbf = fields.Float(string="ICBF", store=True)
-    total_parafiscal = fields.Float(string="Total Parafiscal", store=True)
+    total_contribution_parafiscal = fields.Float(string="Total Parafiscal", store=True)
     
     #prestaciones sociales
     service_bonus = fields.Float(string="Prima", store=True)

@@ -8,6 +8,9 @@ from zipfile import ZipFile
 import base64
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
+from reportlab.lib import colors
+from reportlab.lib.units import mm
+from reportlab.platypus import Table, TableStyle
 import ipdb
 import logging
 import ast
@@ -134,7 +137,7 @@ class HrPayroll(models.Model):
                 'compensation_fund':0.0,
                 'sena':0.0,
                 'icbf':0.0,
-                'total_parafiscal':0.0,
+                'total_contribution_parafiscal':0.0,
 
                 # === Pagos A Prestaciones Sociales ===
                 'service_bonus':0.0,
@@ -269,7 +272,7 @@ class HrPayroll(models.Model):
 
             # === Aportes Parafiscales (Sena, ICBF, Cajas de compensacion)
             totals = self.env['hr.payroll.mixin']._compute_parafiscal_contributions(totals, compensation_fund_pct, sena_pct, icbf_pct, minimun_wage, contract)
-            totals['total_parafiscal'] = totals['compensation_fund'] + totals['sena'] + totals['icbf'] 
+            totals['total_contribution_parafiscal'] = totals['compensation_fund'] + totals['sena'] + totals['icbf'] 
 
             # === Prestaciones Sociales (Prima, Cesantias, Vacaciones) ===
             # === Filtra Todos Los Eventos Que Pertenezcan A Incapacidades ===
@@ -338,7 +341,7 @@ class HrPayroll(models.Model):
                 'compensation_fund': totals['compensation_fund'],
                 'sena': totals['sena'],
                 'icbf': totals['icbf'],
-                'total_parafiscal': totals['total_parafiscal'],
+                'total_contribution_parafiscal': totals['total_contribution_parafiscal'],
                 
                 # === Pagos A Prestaciones Sociales ===
                 'service_bonus': totals['service_bonus'],
@@ -423,6 +426,7 @@ class HrPayroll(models.Model):
         pension_credit = employee_lines.company_pension_contribution + employee_lines.pension_contribution
         # === Creación de líneas contables ===
 
+        ipdb.set_trace()
         line_vals = []
     # =======================
     # Crea a Tabla Con Los Valores En La Nómina 
@@ -672,7 +676,7 @@ class HrPayroll(models.Model):
             
             # Añade línea de ajuste al diario para cuadrar el asiento
             line_vals.append({
-                'payroll_id': employee_lines.payrrol_id.id,
+                'payroll_id': employee_lines.payrol_id.id,
                 'concept_name': 'Ajuste Por Redondeo',
                 'account_id': acc_config.rounding_credit.id or acc_config.rounding_debit.id,
                 'debit': adjust_value if adjust_type == 'debit' else 0.0,
@@ -1099,40 +1103,74 @@ class HrPayroll(models.Model):
     # Genera Los Desprendibles De Nomina
     # ========================
     def action_generate_payslip_pdf(self):
-        """Genera un PDF por cada empleado y devuelve un ZIP descargable."""
+        """Genera un PDF por cada empleado con tabla detallada y devuelve un ZIP descargable."""
         for payroll in self:
             zip_buffer = BytesIO()
 
-            # Crear un archivo ZIP en memoria
             with ZipFile(zip_buffer, 'w') as zip_file:
                 for line in payroll.line_ids:
                     buffer = BytesIO()
                     pdf = canvas.Canvas(buffer, pagesize=A4)
+                    width, height = A4
 
                     # --- Encabezado ---
                     pdf.setFont("Helvetica-Bold", 14)
-                    pdf.drawString(50, 800, "DESPRENDIBLE DE NÓMINA")
+                    pdf.drawCentredString(width / 2, height - 40, "DESPRENDIBLE DE NÓMINA")
 
                     pdf.setFont("Helvetica", 11)
-                    pdf.drawString(50, 780, f"Empleado: {line.employee_id.name or ''}")
-                    pdf.drawString(50, 765, f"Nómina: {payroll.name}")
-                    pdf.drawString(50, 750, f"Periodo: {payroll.date_start} - {payroll.date_end}")
-                    pdf.line(50, 745, 550, 745)
+                    pdf.drawString(40, height - 60, f"Empleado: {line.employee_id.name or ''}")
+                    pdf.drawString(40, height - 75, f"Periodo: {payroll.date_start} - {payroll.date_end}")
+                    pdf.line(40, height - 80, width - 40, height - 80)
 
-                    # --- Detalle ---
-                    y = 730
-                    pdf.drawString(60, y, f"Neto a pagar: {line.net:.2f}")
+                    # --- Datos del desprendible ---
+                    data = [
+                        ["SUELDO BÁSICO", f"{line.base_wage:,.0f}"],
+                        ["DÍAS TRABAJADOS", f"{line.days_worked or 0}"],
+                        ["DEVENGADO", f"{line.wage_earned:,.0f}"],
+                        ["INCAPACIDAD", f"{line.sick_leave:,.0f}"],
+                        ["HORAS EXTRAS", f"{line.overtime_hours or 0}"],
+                        ["AUXILIO DE TRANSPORTE", f"{line.transportation_allowance or 0:,.0f}"],
+                        ["COMISIONES", f"{line.commissions:,.0f}"],
+                        ["OTROS DEVENGADOS", f"{line.other or 0:,.0f}"],
+                        ["TOTAL DEVENGADO", f"{line.gross:,.0f}"],
+
+                        ["APORTES EPS", f"{line.health_contribution or 0:,.0f}"],
+                        ["APORTES PENSIÓN", f"{line.pension_contribution or 0:,.0f}"],
+                        ["RETENCIÓN EN LA FUENTE", "0"],
+                        ["OTROS DESCUENTOS", f"{line.other_deductions or 0:,.0f}"],
+                        ["TOTAL DESCUENTOS", f"{line.total_deductions or 0:,.0f}"],
+                        ["NETO A PAGAR", f"{line.net or 0:,.0f}"],
+                    ]
+
+                    # --- Crear tabla ---
+                    table = Table(data, colWidths=[100*mm, 40*mm])
+                    table.setStyle(TableStyle([
+                        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+                        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                        ('FONT', (0, 0), (-1, -1), 'Helvetica', 10),
+                        ('FONT', (0, 8), (-1, 8), 'Helvetica-Bold', 10),  # Total Devengado
+                        ('FONT', (0, -1), (-1, -1), 'Helvetica-Bold', 10),  # Neto a pagar
+                        ('BACKGROUND', (0, 8), (-1, 8), colors.lightgrey),
+                        ('BACKGROUND', (0, -1), (-1, -1), colors.lightgrey),
+                    ]))
+
+                    # --- Dibujar tabla ---
+                    table.wrapOn(pdf, 40, height - 400)
+                    table.drawOn(pdf, 40, height - 450)
+
+                    # --- Firma ---
+                    pdf.setFont("Helvetica", 10)
+                    pdf.drawString(40, 80, "Firma del Empleado: ___________________________")
+                    pdf.drawString(40, 65, "C.C.: ____________________")
 
                     # Guardar PDF
                     pdf.save()
                     pdf_data = buffer.getvalue()
                     buffer.close()
 
-                    # Añadir PDF al ZIP
                     file_name = f"{line.employee_id.name or 'Empleado'}.pdf"
                     zip_file.writestr(file_name, pdf_data)
 
-            # Guardar el ZIP en un adjunto
             zip_buffer.seek(0)
             attachment = self.env['ir.attachment'].create({
                 'name': f'Desprendibles_{payroll.name}.zip',
@@ -1143,7 +1181,6 @@ class HrPayroll(models.Model):
                 'mimetype': 'application/zip',
             })
 
-            # Descargar el ZIP
             return {
                 'type': 'ir.actions.act_url',
                 'url': f'/web/content/{attachment.id}?download=true',
