@@ -1006,7 +1006,6 @@ class HrPayroll(models.Model):
     # ========================
 
     
-
     # ========================
     # Redondea Los Decimales 
     # ========================
@@ -1099,6 +1098,7 @@ class HrPayroll(models.Model):
                 payroll.state = 'draft'
     # ========================
     
+    
     # ========================
     # Genera Los Desprendibles De Nomina
     # ========================
@@ -1186,5 +1186,5 @@ class HrPayroll(models.Model):
                 'url': f'/web/content/{attachment.id}?download=true',
                 'target': 'new',
             }
-            # ========================
-            
+    # ========================
+# ========================

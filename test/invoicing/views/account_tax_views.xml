@@ -1,0 +1,21 @@
+<odoo>
+    <record id='x_account_tax_views_form' model='ir.ui.view'>
+        <field name='name'>x_account_tax_views_form.account.tax.form</field>
+        <field name='model'>account.tax</field>
+        <field name='inherit_id' ref='account.view_tax_form' />
+        <field name='arch' type='xml'>
+            <xpath expr='//field[@name="amount_type"]' position='after'>
+                <field name="minimum_base_amount" invisible="amount_type != 'percent'" required="amount_type == 'percent'" />
+            </xpath>
+            
+            <!-- Localizamos el div que muestra el campo 'amount' -->
+            <xpath expr="//div[field[@name='amount']]" position="attributes">
+                <attribute name="invisible">amount_type not in ('fixed', 'percent', 'division', 'base')</attribute>
+            </xpath>
+
+            <xpath expr="//label[@for='amount']" position="attributes">
+                <attribute name="invisible">amount_type not in ('fixed', 'percent', 'division', 'base')</attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>

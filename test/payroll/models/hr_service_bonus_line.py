@@ -4,7 +4,7 @@ class HrServiceBonusLine(models.Model):
     _name = "hr.service.bonus.line"
     _description = "Línea de Prima de Servicios"
 
-    service_id = fields.Many2one('hr.payroll.settlement', string="Liquidación", ondelete='cascade')
+    service_id = fields.Many2one('hr.service.bonus', string="Liquidación", ondelete='cascade')
     concept = fields.Char(string="Concepto")
     start_date = fields.Date(string="Fecha Inicial")
     end_date = fields.Date(string="Fecha Final")
