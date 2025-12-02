@@ -215,11 +215,13 @@ class HrPayroll(models.Model):
 
             events = self.env['hr.payroll.mixin']._get_events(employee.id, dates['o1'], dates['o2'])
             parameters = self.env['hr.payroll.mixin']._get_parameter(dates['o1'])
+
             # === Ajustamos los parametros  ===
             transportation_allowance = parameters['transport_allowance']
             company_pension_pct = parameters['company_pension_pct']
             company_health_pct = parameters['company_eps_pct']
             employee_eps_pct = parameters['employee_eps_pct']
+            employee_sena_pct = parameters['employee_sena_pct']
             employee_pension_pct = parameters['employee_pension_pct']
             compensation_fund_pct = parameters['compensation_fund_pct']
             sena_pct = parameters['sena_pct']
@@ -228,12 +230,12 @@ class HrPayroll(models.Model):
 
             # === Vacia Los Totales Del Diccionario Con Cada Ciclo ===            
             totals = self._empty_totals(employee, contract)
-
+            
             # === Calculo De Los Dias Trabajados ===
             totals = self.env['hr.payroll.mixin']._compute_days_worked(events, totals,  dates['o1'], dates['o2'], dates)
             
             # === Calculo De Los Eventos Sin Incapacidad
-            incapacity_types = ['sick_leave', 'unpaid_leave', 'arl_leave']
+            incapacity_types = ['sick_leave', 'paid_leave', 'unpaid_leave', 'arl_leave']
             events_worked =  events.filtered(lambda e: e.type not in incapacity_types)
             if events_worked:
                 for ev in events_worked:
@@ -248,7 +250,7 @@ class HrPayroll(models.Model):
             totals['wage_per_day'] =contract.wage / 30
             totals['wage_earned'] = totals['wage_per_day'] * totals['days_worked']
             totals['wage_earned'] = totals['wage_earned']
-            totals['parafiscal_base'] = totals['wage_earned'] + totals['commissions'] + totals['overtime_hours']
+            totals['parafiscal_base'] = totals['wage_earned'] + totals['commissions']
             transport_base = totals['parafiscal_base'] 
             
             # === Calculo Auxilio De Transporte ===
@@ -264,6 +266,7 @@ class HrPayroll(models.Model):
                 totals,
                 company_health_pct,
                 employee_eps_pct,
+                employee_sena_pct,
                 company_pension_pct,
                 employee_pension_pct,
                 minimun_wage,
@@ -408,13 +411,12 @@ class HrPayroll(models.Model):
     
         # Borramos las líneas previas
         self.account_line_ids.unlink()
-    
+
         # Recalculamos solo para ese empleado
         employee_lines = self.line_ids.filtered(lambda l: l.employee_id == self.employee_selector_id)
         if not employee_lines:
             raise UserError("No hay líneas de nómina para el empleado seleccionado en este periodo.")  
         # Creamos las líneas filtradas
-        
         
         contract = self.env['hr.contract'].search([
             ('employee_id', '=', self.employee_selector_id.id),
@@ -426,8 +428,8 @@ class HrPayroll(models.Model):
         pension_credit = employee_lines.company_pension_contribution + employee_lines.pension_contribution
         # === Creación de líneas contables ===
 
-        ipdb.set_trace()
         line_vals = []
+        
     # =======================
     # Crea a Tabla Con Los Valores En La Nómina 
     # =======================
@@ -615,7 +617,7 @@ class HrPayroll(models.Model):
         line_vals.append({
             'payroll_id': employee_lines.payroll_id.id,
             'concept_name': 'Aporte A Salud Credito',
-            'account_id': contract.eps_id.eps_account.id,
+            'account_id': contract.eps_id.eps_account.id or acc_config.health_account_credit.id,
             'debit': 0.0,
             'credit': employee_lines.health_contribution, 
         })
@@ -624,7 +626,7 @@ class HrPayroll(models.Model):
         line_vals.append({
             'payroll_id': employee_lines.payroll_id.id,
             'concept_name': 'Aportes Pensión Credito',
-            'account_id': contract.pension_fund_id.pension_account.id,
+            'account_id': contract.pension_fund_id.pension_account.id or acc_config.pension_account_credit.id,
             'debit': 0.0,
             'credit': pension_credit,
         })
@@ -633,7 +635,7 @@ class HrPayroll(models.Model):
         line_vals.append({
             'payroll_id': employee_lines.payroll_id.id,
             'concept_name': 'Aportes Arl Credito',
-            'account_id': contract.arl_id.arl_account.id,
+            'account_id': contract.arl_id.arl_account.id or acc_config.arl_account_credit.id,
             'debit': 0.0,
             'credit': employee_lines.arl_contribution,
         })
@@ -643,7 +645,7 @@ class HrPayroll(models.Model):
         line_vals.append({
             'payroll_id': employee_lines.payroll_id.id,
             'concept_name': 'Aportes Caja De Compensacion',
-            'account_id': contract.compensation_fund_id.compensation_account.id,
+            'account_id': contract.compensation_fund_id.compensation_account.id or acc_config.compensation_fund_credit.id,
             'debit': 0.0,
             'credit': employee_lines.compensation_fund,
         })
@@ -669,14 +671,14 @@ class HrPayroll(models.Model):
         total_credit = sum(line['credit'] for line in line_vals)
         difference = round(total_debit - total_credit, 2)
 
-        if abs(difference) >= 0.01:
+        if abs(difference) <= 0.5:
             # Determina si hay más débito o crédito
             adjust_type = 'debit' if difference < 0 else 'credit'
             adjust_value = abs(difference)
             
             # Añade línea de ajuste al diario para cuadrar el asiento
             line_vals.append({
-                'payroll_id': employee_lines.payrol_id.id,
+                'payroll_id': employee_lines.payroll_id.id,
                 'concept_name': 'Ajuste Por Redondeo',
                 'account_id': acc_config.rounding_credit.id or acc_config.rounding_debit.id,
                 'debit': adjust_value if adjust_type == 'debit' else 0.0,
@@ -1021,7 +1023,7 @@ class HrPayroll(models.Model):
         total_credit = sum(line['credit'] for line in lines_vals)
         difference = round(total_debit - total_credit, 2)
 
-        if abs(difference) <= 0.01:
+        if abs(difference) <= 0.5:
             adjust_type = 'debit' if difference < 0 else 'credit'
             adjust_value = abs(difference)
             lines_vals.append({

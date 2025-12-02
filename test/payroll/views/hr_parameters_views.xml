@@ -28,6 +28,12 @@
                             <span class="o_form_label oe_inline">%</span>
                         </div>
 
+                        <label for="employee_sena_pct" />
+                        <div>
+                            <field name="employee_sena_pct" class="oe_inline" nolabel="1" />
+                            <span class="o_form_label oe_inline">%</span>
+                        </div>
+
                         <label for="company_pension_pct" />
                         <div>
                             <field name="company_pension_pct" class="oe_inline" nolabel="1" />
@@ -77,6 +83,7 @@
                 <field name="uvt_value" />
                 <field name="company_eps_pct" />
                 <field name="employee_eps_pct" />
+                <field name="employee_sena_pct" />
             </list>
         </field>
     </record>

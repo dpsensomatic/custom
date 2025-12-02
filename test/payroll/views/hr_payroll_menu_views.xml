@@ -17,7 +17,6 @@
     <menuitem name="Nómina" id="payroll_menu_root" />
 
     <!-- Submenus del Root -->
-    <menuitem name="Tablero" id="payroll.chart" parent="payroll_menu_root" />
     <menuitem name="Empleado" id="payroll.employee" parent="payroll_menu_root" /> 
     <menuitem name="Nómina" id="payroll.payroll" parent="payroll_menu_root" />
     <menuitem name="Reportes" id="payroll.reports" parent="payroll_menu_root" />
@@ -26,9 +25,6 @@
     <!-- <menuitem name="Recibos de nomina" id="payroll.payroll_receipts" parent="payroll_menu_root"
     />-->
 
-    <!-- Submenu de Tableros -->
-    <menuitem name="Tablero" id="payroll.chart_test" parent="payroll.chart"
-        action='payroll_action_window' />
 
     <!-- Submenu de Empleados -->
     <menuitem name="Empleados" id="payroll.employee_form" parent="payroll.employee"

@@ -17,7 +17,7 @@
                         <field name='employee_id'/>
                         <field name='contract_id'/>
                         <field name='type'/>
-                        <field name="fixed_value" invisible="type != 'commissions'"/>
+                        <field name="fixed_value" invisible="type not in ['commissions', 'bounties']"/>
                         <field name='date'/>
                         <field name='quantity' invisible="type in ['commissions', 'bounties']"/>
                         <field name='date_end' invisible="type in ['commissions', 'bounties']"/>

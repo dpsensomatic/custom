@@ -7,6 +7,3 @@ class AccountTax (models.Model):
     
     # === Definicion De Los Campos ===
     minimum_base_amount = fields.Float(string="Monto base mínimo")
-        
-    
-    

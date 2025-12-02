@@ -130,7 +130,7 @@ class HrServiceBonus(models.Model):
         
         # === Se Guardan Los Eventos Que Se Comportan Distinto ===
         if events:
-            incapacity_types = ['sick_leave', 'arl_leave']
+            incapacity_types = ['sick_leave', 'paid_leave', 'arl_leave']
             unpaid_events = events.filtered(lambda e: e.type == 'unpaid_leave')
             incapacity_events = events.filtered(lambda e: e.type in incapacity_types)
             commissions_events = events.filtered(lambda e: e.type == 'commissions')

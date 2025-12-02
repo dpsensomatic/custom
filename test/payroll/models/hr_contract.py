@@ -23,23 +23,26 @@ class HrContract(models.Model):
     eps_id = fields.Many2one(
         'hr.eps.entity',
         string='EPS',
-        help='Entidad promotora de salud del empleado'
+        help='Se debe crear el aporte a eps'
+        
     )
     pension_fund_id = fields.Many2one(
         'hr.pension.fund',
-        string='Fondo de Pensión'
+        string='Fondo de Pensión',
+        help='Se debe crear el aporte a pension'
     )
     arl_id= fields.Many2one(
         'hr.arl.entity',
         string='ARL',
-        help='Entidad promotora de seguridad del empleado'
+        help='Se debe crear el aporte de arl'
     )
     
     # === Caja de compensacion ===
     compensation_check = fields.Boolean(string='Caja de compensación')
     compensation_fund_id = fields.Many2one(
         'hr.compensation.fund',
-        string='Entidad caja de compensación'
+        string='Entidad caja de compensación',
+        help='Se debe crear el aporte a caja de compensacion'
     )
     
     
@@ -69,5 +72,3 @@ class HrContract(models.Model):
         return arl_fee_value
     
     # ==========================
-    
-

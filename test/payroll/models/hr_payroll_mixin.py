@@ -93,6 +93,7 @@ class HrPayrollMixin(models.AbstractModel):
             "uvt_value": record.uvt_value,
             "company_eps_pct": record.company_eps_pct,
             "employee_eps_pct": record.employee_eps_pct,
+            "employee_sena_pct": record.employee_sena_pct,
             "company_pension_pct": record.company_pension_pct,
             "employee_pension_pct": record.employee_pension_pct,
             "compensation_fund_pct" : record.compensation_fund_pct,
@@ -117,7 +118,7 @@ class HrPayrollMixin(models.AbstractModel):
     def _compute_days_worked(self, events, totals, date_start, date_end, dates):
         
         # === Filtra Todos Los Eventos Que Pertenezcan A Incapacidades ===
-        allowed_types = ['sick_leave', 'unpaid_leave', 'arl_leave']
+        allowed_types = ['sick_leave', 'paid_leave', 'unpaid_leave', 'arl_leave']
         allowed_events =  events.filtered(lambda e: e.type in allowed_types)
         
         # === Si No Hay Eventos Se Guardan Los Dias Trabajados En 30 ===
@@ -185,12 +186,14 @@ class HrPayrollMixin(models.AbstractModel):
     # Recibe los parametros anuales y retorna los totales de las contribuciones 
     # ========================
     @api.model
-    def _compute_contributions(self, totals, company_eps_pct, employee_eps_pct,
+    def _compute_contributions(self, totals, company_eps_pct, employee_eps_pct, employee_sena_pct,
                                company_pension_pct, employee_pension_pct, minimum_wage, contract):
         """Recibe el valor base de las contribuciones y aplica los cálculos."""
         arl_fee_pct= self._assign_arl(contract.arl_fee)
-        if totals['gross'] >= minimum_wage*10 or contract.sena_apprentice:
+        if totals['gross'] >= minimum_wage*10:
             totals['company_health_contribution'] = totals['parafiscal_base'] * company_eps_pct / 100.0
+        if contract.sena_apprentice and contract.apprentice_type == 'academic':
+            totals['health_contribution'] = totals['parafiscal_base'] * employee_sena_pct / 100.0
         if not contract.sena_apprentice and not contract.apprentice_type == 'academic':  
             totals['company_pension_contribution'] = (totals['parafiscal_base'] * company_pension_pct / 100.0)
             totals['pension_contribution'] = totals['parafiscal_base'] * employee_pension_pct / 100.0
@@ -431,6 +434,8 @@ class HrPayrollMixin(models.AbstractModel):
             days_worked = days_to_work - incapacity_days +2
             if incapacity_days >= days_to_work:
                 days_worked = days_to_work - incapacity_days
+            elif incapacity_days <= 5:
+                days_worked = days_to_work - incapacity_days
         elif (split_dates[0]['d2'].day == 31 and incapacity_days < 30 and days_to_work > 30): 
             days_worked = days_to_work - incapacity_days - 1
         else:
@@ -452,7 +457,6 @@ class HrPayrollMixin(models.AbstractModel):
             if split['d2'].day == 31 and unpaid_days > 30:
                 unpaid_days = split['o2'].day - split['o1'].day 
             totals +=  unpaid_days
-
         return totals
     # ========================
     

@@ -20,6 +20,7 @@ class HrParameters(models.Model):
     # === Aportes Seguridad Social ===
     company_eps_pct = fields.Float(string="EPS Empresa")
     employee_eps_pct = fields.Float(string="EPS Trabajador")
+    employee_sena_pct = fields.Float(string="EPS Aprendiz Sena")
     company_pension_pct = fields.Float(string="Pensión Empresa")
     employee_pension_pct = fields.Float(string="Pensión Trabajador")
     

@@ -5,6 +5,7 @@ class HrEpsEntity(models.Model):
     _description = 'Entidad de Salud (EPS)'
 
     name = fields.Char(string='Nombre de la EPS', required=True)
+    nit = fields.Char(string='Nit') 
     code = fields.Char(string='Código', help='Código interno o del ministerio')
     phone = fields.Char(string='Teléfono')
     address = fields.Char(string='Dirección')
@@ -17,11 +18,12 @@ class HrArlEntity(models.Model):
     _description = 'Arl'
 
     name = fields.Char(string='Nombre del ARL', required=True)
+    nit = fields.Char(string='Nit') 
     code = fields.Char(string='Código')
-    active = fields.Boolean(default=True)
     phone = fields.Char(string='Teléfono')
-    arl_account = fields.Many2one("account.account", string="Cuenta de Arl")
     address = fields.Char(string='Dirección')
+    arl_account = fields.Many2one("account.account", string="Cuenta de Arl")
+    active = fields.Boolean(default=True)
     
     
 class HrPensionFund(models.Model):
@@ -29,11 +31,12 @@ class HrPensionFund(models.Model):
     _description = 'Fondo de Pensión'
 
     name = fields.Char(string='Nombre del Fondo', required=True)
+    nit = fields.Char(string='Nit') 
     code = fields.Char(string='Código')
-    active = fields.Boolean(default=True)
     phone = fields.Char(string='Teléfono')
-    pension_account = fields.Many2one("account.account", string="Cuenta de pension")
     address = fields.Char(string='Dirección')
+    pension_account = fields.Many2one("account.account", string="Cuenta de pension")
+    active = fields.Boolean(default=True)
     
 
 class HrCompensationFund(models.Model):
@@ -41,8 +44,9 @@ class HrCompensationFund(models.Model):
     _description = 'Caja de Compensación'
 
     name = fields.Char(string='Nombre de la Caja', required=True)
+    nit = fields.Char(string='Nit') 
     code = fields.Char(string='Código')
-    active = fields.Boolean(default=True)
     phone = fields.Char(string='Teléfono')
-    compensation_account = fields.Many2one("account.account", string="Cuenta de caja de compensacion")
     address = fields.Char(string='Dirección')
+    compensation_account = fields.Many2one("account.account", string="Cuenta de caja de compensacion")
+    active = fields.Boolean(default=True)

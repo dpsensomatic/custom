@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
-    <record id='hr_contracto_arl_view_form' model='ir.ui.view'>
+    <record id='hr_contract_arl_view_form' model='ir.ui.view'>
         <field name='name'>hr_contract_arl.hr.contract.form</field>
         <field name='model'>hr.contract</field>
         <field name='inherit_id' ref='hr_contract.hr_contract_view_form' />
@@ -26,7 +26,7 @@
                     <field name="pension_fund_id"/>
                     <field name="arl_id"/>
                     <field name="compensation_check"/>
-                    <field name="compensation_fund_id"/>
+                    <field name="compensation_fund_id" invisible="compensation_check == False"/>
                 </group>
                 <group string='SENA'>
                     <field name='sena_apprentice'/>

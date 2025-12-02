@@ -138,7 +138,7 @@ class HrPayrollSettlement(models.Model):
             events = self.env["hr.payroll.mixin"]._get_events(self.employee_id.id, self.contract_start_date, self.cutoff_date)
             
         # === Se Guardan Los Eventos Que Se Comportan Distinto ===
-        incapacity_types = ['sick_leave', 'arl_leave']
+        incapacity_types = ['sick_leave', 'paid_leav', 'arl_leave']
         unpaid_events = events.filtered(lambda e: e.type == 'unpaid_leave')
         incapacity_events = events.filtered(lambda e: e.type in incapacity_types)
         commissions_events = events.filtered(lambda e: e.type == 'commissions')
