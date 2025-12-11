@@ -25,6 +25,8 @@ class HrPayrollEvents(models.Model):
         ('arl_leave', 'Incapacidad ARL'), # Fecha, Cantidad, Remunerado, Cuenta para los dias trabajados pero no para beneficios  
         ('paid_leave', 'Permiso Remunerado'), # Fecha, Cantidad, Remunerado, Cuenta para los dias trabajados pero no para beneficios
         ('unpaid_leave', 'Permiso No Remunerado'), # Fecha, Cantidad, No Remunerado, Cuenta para los dias trabajados y descuenta en beneficios
+        ('suspension', 'Suspensión'), # Marca Cuando un empleado fue suspendido
+        ('parental_leave', 'Licencia de maternidad/paternidad')
     ], string='Tipo de Novedad', required=True)
     fixed_value = fields.Monetary(
         string="Valor fijo",
@@ -105,6 +107,7 @@ class HrPayrollEvents(models.Model):
                     'sick_leave': 0.0, 
                     'overtime_hours': 0.0,
                     'commissions': 0.0,
+                    'parental_leave' : 0.0,
                     'other': 0.0
                     }
     # =========================
@@ -134,6 +137,7 @@ class HrPayrollEvents(models.Model):
                     'sick_leave': 0.0, 
                     'overtime_hours': 0.0,
                     'commissions': 0.0,
+                    'parental_leave' : 0.0,
                     'other': 0.0
                     }
         # ========================
@@ -155,7 +159,6 @@ class HrPayrollEvents(models.Model):
         
         # === sick_leave = Incapacidades por enfermedad ===
         elif self.type == "sick_leave":
-            ipdb.set_trace()
             total_payment = 0
             for i in range(int(unpaid_days)):
                 # dia_global = days_before_period + i + 1  # el día "real" dentro de la incapacidad
@@ -192,11 +195,19 @@ class HrPayrollEvents(models.Model):
             
             result["sick_leave"] = unpaid_days * day_wage * 1
             
+        elif self.type == "parental_leave":
+            result["sick_leave"] = unpaid_days * day_wage * 1
+            result['parental_leave']  = unpaid_days*day_wage*1
             
         # === unpaid_leave = Dias no trabajados no remunerados ===           
         elif self.type == "unpaid_leave":
             
             result["sick_leave"] = 0.0
+        
+        
+        elif self.type == "suspension":
+
+            result['sick_leave'] = 0.0
             
         # === retorna los valores conseguidos en las novedades ===
         return result

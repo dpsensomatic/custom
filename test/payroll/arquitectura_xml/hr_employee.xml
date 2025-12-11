@@ -1,0 +1,65 @@
+<group>
+    <group string="Contacto privado">
+        <label for="private_street" string="Dirección particular" />
+        <div class="o_address_format">
+            <field name="private_street" placeholder="Calle..." class="o_address_street" />
+            <field name="private_street2" placeholder="Calle 2..." class="o_address_street" />
+            <field name="private_city" placeholder="Ciudad" class="o_address_city" />
+            <field name="private_state_id" class="o_address_state" placeholder="Estado"
+                options="{'no_open': True, 'no_quick_create': True}"
+                context="{'default_country_id': private_country_id}" can_create="True"
+                can_write="True" />
+            <field name="private_zip" placeholder="C.P." class="o_address_zip" />
+            <field name="private_country_id" placeholder="País" class="o_address_country"
+                options="{&quot;no_open&quot;: True, &quot;no_create&quot;: True}" can_create="True"
+                can_write="True" />
+        </div>
+        <field name="private_email" placeholder="Por ejemplo, micorreoprivado@ejemplo.com" />
+        <field name="private_phone" />
+        <field name="bank_account_id" context="{'default_partner_id': work_contact_id}"
+            options="{'no_quick_create': True}" readonly="not id" can_create="True" can_write="True" />
+        <label for="distance_home_work" />
+        <div class="o_row" name="div_km_home_work">
+            <field name="distance_home_work" class="o_hr_narrow_field" />
+            <span>
+                <field name="distance_home_work_unit" />
+            </span>
+        </div>
+        <field name="private_car_plate" />
+    </group>
+    <group string="Ciudadanía">
+        <field name="country_id" options="{&quot;no_open&quot;: True, &quot;no_create&quot;: True}"
+            can_create="True" can_write="True" />
+        <field name="l10n_latam_identification_type_id" string="Tipo de documento"
+            can_create="False" can_write="True" />
+        <field name="expedition_place" string="Lugar de expedicion" />
+        <field name="identification_id" />
+        <field name="ssnid" />
+        <field name="passport_id" />
+        <field name="gender" />
+        <field name="birthday" />
+        <field name="place_of_birth" />
+        <field name="country_of_birth" can_create="True" can_write="True" />
+    </group>
+    <group string="Emergencia" name="emergency">
+        <field name="emergency_contact" />
+        <field name="emergency_phone" class="o_force_ltr" />
+        <separator string="Estado familiar" />
+        <field name="marital" />
+        <field name="spouse_complete_name" invisible="marital not in ['married', 'cohabitant']" />
+        <field name="spouse_birthdate" invisible="marital not in ['married', 'cohabitant']" />
+        <field name="children" />
+    </group>
+    <group string="Educación">
+        <field name="certificate" />
+        <field name="study_field" />
+        <field name="study_school" />
+        <separator name="has_work_permit" string="Permiso de trabajo" />
+        <field name="visa_no" />
+        <field name="permit_no" on_change="1" />
+        <field name="visa_expire" />
+        <field name="work_permit_expiration_date" />
+        <field name="work_permit_name" invisible="1" />
+        <field name="has_work_permit" widget="work_permit_upload" filename="work_permit_name" />
+    </group>
+</group>

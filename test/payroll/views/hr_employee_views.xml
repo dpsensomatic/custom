@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+  <record id='x_employee_form_view' model='ir.ui.view'>
+
+    <field name='name'>x_employee_form.hr.employee.form</field>
+
+    <field name='model'>hr.employee</field>
+
+    <field name='inherit_id' ref='hr.view_employee_form' />
+
+    <field name='arch' type='xml'>
+
+      <xpath expr='//field[@name="identification_id"]' position='before'>
+        <field name='l10n_latam_identification_type_id' string='Tipo de documento' />
+        <field name='expedition_place' string='Lugar de expedicion' />
+      </xpath>
+      
+    </field>
+  </record>
+</odoo>

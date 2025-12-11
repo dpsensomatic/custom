@@ -114,6 +114,7 @@ class HrPayroll(models.Model):
                 'incapacity_days': 0.0,
                 'incapacity_days_unique': 0.0,
                 'sick_leave': 0.0,
+                'parental_leave': 0.0,
                 'absences':0.0,
                 'overtime_hours': 0.0,
                 'transportation_allowance': 0.0,
@@ -234,8 +235,9 @@ class HrPayroll(models.Model):
             # === Calculo De Los Dias Trabajados ===
             totals = self.env['hr.payroll.mixin']._compute_days_worked(events, totals,  dates['o1'], dates['o2'], dates)
             
+            ipdb.set_trace()
             # === Calculo De Los Eventos Sin Incapacidad
-            incapacity_types = ['sick_leave', 'paid_leave', 'unpaid_leave', 'arl_leave']
+            incapacity_types = ['sick_leave', 'paid_leave','suspension', 'unpaid_leave','parental_leave', 'arl_leave']
             events_worked =  events.filtered(lambda e: e.type not in incapacity_types)
             if events_worked:
                 for ev in events_worked:
@@ -246,6 +248,7 @@ class HrPayroll(models.Model):
                         except Exception:
                             pass
 
+            ipdb.set_trace()
             # === Calculo del Salario segun incapacidades ===
             totals['wage_per_day'] =contract.wage / 30
             totals['wage_earned'] = totals['wage_per_day'] * totals['days_worked']
@@ -275,11 +278,12 @@ class HrPayroll(models.Model):
 
             # === Aportes Parafiscales (Sena, ICBF, Cajas de compensacion)
             totals = self.env['hr.payroll.mixin']._compute_parafiscal_contributions(totals, compensation_fund_pct, sena_pct, icbf_pct, minimun_wage, contract)
+
             totals['total_contribution_parafiscal'] = totals['compensation_fund'] + totals['sena'] + totals['icbf'] 
 
             # === Prestaciones Sociales (Prima, Cesantias, Vacaciones) ===
             # === Filtra Todos Los Eventos Que Pertenezcan A Incapacidades ===
-            allowed_types = ['unpaid_leave']
+            allowed_types = ['unpaid_leave','suspension']
             unpaid_events =  events.filtered(lambda e: e.type in allowed_types)
 
             if unpaid_events:

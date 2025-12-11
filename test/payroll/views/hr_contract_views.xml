@@ -15,22 +15,28 @@
                         </div>
                     </group>
                     <group>
-                    <field name='arl_fee'/>
+                        <field name='arl_fee' />
                     </group>
                     <group name="yearly_benefits" />
                 </group>
             </xpath>
             <xpath expr="//group[@name='contract_details_0']" position="inside">
                 <group string='Seguridad Social'>
-                    <field name="eps_id"/>
-                    <field name="pension_fund_id"/>
-                    <field name="arl_id"/>
-                    <field name="compensation_check"/>
-                    <field name="compensation_fund_id" invisible="compensation_check == False"/>
+                    <field name="eps_id" />
+                    <field name="eps_affiliation_date" />
+                    <field name="pension_fund_id" />
+                    <field name="pension_affiliation_date" />
+                    <field name="arl_id" />
+                    <field name="arl_affiliation_date" />
+                    <field name="compensation_check" />
+                    <field name="compensation_fund_id" invisible="compensation_check == False" />
+                    <field name="compensation_affiliation_date"
+                        invisible="compensation_check == False" />
                 </group>
-                <group string='SENA'>
-                    <field name='sena_apprentice'/>
-                    <field name='apprentice_type'/>
+                <group string='Condiciones Especiales'>
+                    <field name='sena_apprentice' />
+                    <field name='apprentice_type' />
+                    <field name='intern' />
                 </group>
             </xpath>
         </field>

@@ -26,15 +26,26 @@ class HrContract(models.Model):
         help='Se debe crear el aporte a eps'
         
     )
+    eps_affiliation_date = fields.Date(
+        string='Fecha de afiliación EPS'
+    )
+    
     pension_fund_id = fields.Many2one(
         'hr.pension.fund',
         string='Fondo de Pensión',
         help='Se debe crear el aporte a pension'
     )
+    pension_affiliation_date = fields.Date(
+        string='Fecha de afiliación Pensión'
+    )
+    
     arl_id= fields.Many2one(
         'hr.arl.entity',
         string='ARL',
         help='Se debe crear el aporte de arl'
+    )
+    arl_affiliation_date = fields.Date(
+        string='Fecha de afiliación ARL'
     )
     
     # === Caja de compensacion ===
@@ -44,6 +55,9 @@ class HrContract(models.Model):
         string='Entidad caja de compensación',
         help='Se debe crear el aporte a caja de compensacion'
     )
+    compensation_affiliation_date = fields.Date(
+        string='Fecha de afiliación Caja de Compensación'
+    )
     
     
     # === Tipo De Vinculacion ===
@@ -52,6 +66,8 @@ class HrContract(models.Model):
         ('academic','Etapa Lectiva'),
         ('productive','Etapa Productiva')
     ], string='Etapa del aprendiz')
+    
+    intern = fields.Boolean(string='Pasante')
     # ==========================
     
     

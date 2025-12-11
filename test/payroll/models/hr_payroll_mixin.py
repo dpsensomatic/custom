@@ -118,7 +118,7 @@ class HrPayrollMixin(models.AbstractModel):
     def _compute_days_worked(self, events, totals, date_start, date_end, dates):
         
         # === Filtra Todos Los Eventos Que Pertenezcan A Incapacidades ===
-        allowed_types = ['sick_leave', 'paid_leave', 'unpaid_leave', 'arl_leave']
+        allowed_types = ['sick_leave', 'paid_leave', 'unpaid_leave','suspension', 'parental_leave', 'arl_leave']
         allowed_events =  events.filtered(lambda e: e.type in allowed_types)
         
         # === Si No Hay Eventos Se Guardan Los Dias Trabajados En 30 ===
@@ -174,8 +174,8 @@ class HrPayrollMixin(models.AbstractModel):
     # ========================
     @api.model
     def _compute_transport_allowance(self, wage, days_worked, min_wage, allowance, contract):
-        """Calcula auxilio de transporte según el SMMLV."""
-        if not contract.sena_apprentice and not contract.apprentice_type == 'academic':  
+        """Calcula auxilio de transporte según el SMMLV."""        
+        if not contract.sena_apprentice and not contract.apprentice_type == 'academic' or not contract.intern:  
             if wage <= (2 * min_wage):
                 return (allowance / 30.0) * days_worked
         return 0.0
@@ -189,16 +189,25 @@ class HrPayrollMixin(models.AbstractModel):
     def _compute_contributions(self, totals, company_eps_pct, employee_eps_pct, employee_sena_pct,
                                company_pension_pct, employee_pension_pct, minimum_wage, contract):
         """Recibe el valor base de las contribuciones y aplica los cálculos."""
+        
         arl_fee_pct= self._assign_arl(contract.arl_fee)
+        if totals['parental_leave'] < 1:
+            ipdb.set_trace()
+            totals['arl_contribution'] = totals['parafiscal_base'] * arl_fee_pct / 100.0
+        if contract.intern:
+            return totals
+        if totals['parental_leave'] > 0:
+            ipdb.set_trace()
+            totals['parafiscal_base'] += totals['parental_leave'] 
+        ipdb.set_trace()
+        if not contract.sena_apprentice and not contract.apprentice_type == 'academic':
+            totals['pension_contribution'] = totals['parafiscal_base'] * employee_pension_pct / 100.0
+            totals['company_pension_contribution'] = (totals['parafiscal_base'] * company_pension_pct / 100.0)
+            totals['health_contribution'] = totals['parafiscal_base'] * employee_eps_pct / 100.0
         if totals['gross'] >= minimum_wage*10:
             totals['company_health_contribution'] = totals['parafiscal_base'] * company_eps_pct / 100.0
         if contract.sena_apprentice and contract.apprentice_type == 'academic':
             totals['health_contribution'] = totals['parafiscal_base'] * employee_sena_pct / 100.0
-        if not contract.sena_apprentice and not contract.apprentice_type == 'academic':  
-            totals['company_pension_contribution'] = (totals['parafiscal_base'] * company_pension_pct / 100.0)
-            totals['pension_contribution'] = totals['parafiscal_base'] * employee_pension_pct / 100.0
-            totals['health_contribution'] = totals['parafiscal_base'] * employee_eps_pct / 100.0
-        totals['arl_contribution'] = totals['parafiscal_base'] * arl_fee_pct / 100.0
         return totals
     # ========================
     
@@ -210,6 +219,8 @@ class HrPayrollMixin(models.AbstractModel):
     def _compute_parafiscal_contributions(self, totals, compensation_fund_pct, sena_pct,
                                icbf_pct, minimum_wage, contract):
         """Recibe el valor base de las contribuciones y aplica los cálculos."""
+        if totals['parental_leave'] > 0:
+            return totals
         if totals['gross'] >= minimum_wage*10:
             totals['sena'] = totals['parafiscal_base'] * sena_pct / 100.0
             totals['icbf'] = totals['parafiscal_base'] * icbf_pct / 100.0
@@ -227,6 +238,9 @@ class HrPayrollMixin(models.AbstractModel):
     @api.model
     def _compute_benefits(self, totals,  wage_per_day, days_to_work, absences, contract):
         
+        if contract.intern:
+            return totals
+
         days_worked = days_to_work - absences
         totals['average_wage'] = (wage_per_day*days_worked)+ totals['commissions'] + totals['transportation_allowance']
         
