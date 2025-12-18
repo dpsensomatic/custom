@@ -45,9 +45,7 @@ class AccountMoveLine (models.Model):
             # ==========================
             # Asignar impuestos finales
             # ==========================
-            ipdb.set_trace()
             for lines in invoice_lines:
-                ipdb.set_trace()
                 if lines.display_type == 'product':
                     lines.tax_ids = product_taxes | apply_taxes
         _logger.info("Entró al onchange de impuestos para la línea %s", self.id)

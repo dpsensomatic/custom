@@ -21,7 +21,7 @@ class HrPayrollEvents(models.Model):
     type = fields.Selection([
         ('commissions', 'Comisiones'), # Valor Fijo
         ('bounties', 'Bonificaciones'), # Valor Fijo
-        ('sick_leave', 'Incapacidades'), # Fecha, Cantidad, Remunerado, Cuenta para los dias trabajados pero no para beneficios
+        ('sick_leave', 'Incapacidad General'), # Fecha, Cantidad, Remunerado, Cuenta para los dias trabajados pero no para beneficios
         ('arl_leave', 'Incapacidad ARL'), # Fecha, Cantidad, Remunerado, Cuenta para los dias trabajados pero no para beneficios  
         ('paid_leave', 'Permiso Remunerado'), # Fecha, Cantidad, Remunerado, Cuenta para los dias trabajados pero no para beneficios
         ('unpaid_leave', 'Permiso No Remunerado'), # Fecha, Cantidad, No Remunerado, Cuenta para los dias trabajados y descuenta en beneficios
@@ -98,6 +98,33 @@ class HrPayrollEvents(models.Model):
     # Cálculo del valor de la novedad
     # ==========================
     def _compute_value(self, unpaid_days):
+        """
+        Calcula los valores económicos y operativos asociados a una novedad,
+        en función de su tipo, el contrato del empleado y la cantidad de días
+        involucrados en el período evaluado.
+
+        Este método actúa como una capa de cálculo que traduce una novedad
+        (comisión, incapacidad, licencia, suspensión, etc.) en valores
+        monetarios y contables que luego son acumulados en el proceso de nómina.
+
+        El cálculo:
+        - Se basa en el salario contractual del empleado
+        - Usa parámetros legales vigentes según la fecha de la novedad
+        - Aplica reglas específicas dependiendo del tipo de novedad
+        - No modifica estados ni persiste datos, solo retorna resultados
+
+        Args:
+            unpaid_days (int | float): Cantidad de días asociados a la novedad
+                dentro del período de cálculo. Puede representar días no
+                trabajados, días de incapacidad o días liquidados parcialmente,
+                según el tipo de novedad.
+
+        Returns:
+            dict: Diccionario con los valores calculados para la novedad.
+                Las claves representan conceptos de nómina (días trabajados,
+                incapacidades, horas extra, comisiones, etc.) y los valores
+                corresponden al monto calculado para cada uno.
+        """
         self.ensure_one()
 
         # === Valida si tiene contrato en caso contrario retorna 0 en todos los valores ===
@@ -110,7 +137,6 @@ class HrPayrollEvents(models.Model):
                     'parental_leave' : 0.0,
                     'other': 0.0
                     }
-    # =========================
             
         # ==========================
         # Variables base para cálculos
@@ -212,3 +238,4 @@ class HrPayrollEvents(models.Model):
         # === retorna los valores conseguidos en las novedades ===
         return result
         # ========================
+    # =========================

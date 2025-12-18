@@ -31,7 +31,7 @@ Long description of module's purpose
         'demo/demo.xml',
     ],
     'license': 'LGPL-3',
-    'installable': False,
-    'application': False,
+    'installable': True,
+    'application': True
     }
 

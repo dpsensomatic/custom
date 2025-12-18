@@ -10,7 +10,7 @@ class HrEpsEntity(models.Model):
     phone = fields.Char(string='Teléfono')
     address = fields.Char(string='Dirección')
     eps_account = fields.Many2one("account.account", string="Cuenta de Eps")
-    active = fields.Boolean(default=True)
+    active = fields.Boolean(default=True,string='Activo')
 
 
 class HrArlEntity(models.Model):

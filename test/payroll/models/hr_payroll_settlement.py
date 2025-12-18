@@ -67,8 +67,29 @@ class HrPayrollSettlement(models.Model):
     #  Vacia Los Totales Que Hayan En Los Diccionarios
     # ========================
     def _empty_totals(self, concept):
-        """Diccionario base con todas las claves que usamos.
-        Si agregas nuevos componentes, añádelos aquí."""
+        """
+        Construye el diccionario base con todos los totales usados en los cálculos
+        de los conceptos de liquidación.
+
+        Este método inicializa todas las claves necesarias para el cálculo de la
+        liquidación. Todas las claves se crean desde el inicio para evitar errores
+        en los cálculos posteriores.
+
+        Args:
+            concepts (list[str]):
+                Lista de conceptos de liquidación a inicializar.
+                Ejemplo: ['prima', 'cesantias', 'intereses_cesantias', 'vacaciones'].
+
+        Returns:
+            dict:
+                Diccionario con la estructura completa de totales de liquidación,
+                donde cada concepto se inicializa con valores numéricos en 0.0.
+
+        Notes:
+            - Este diccionario es la base de todos los cálculos posteriores.
+            - Si se agregan nuevos conceptos de nómina, deben añadirse aquí.
+            - No eliminar claves aunque temporalmente no se utilicen.
+        """
         return {                 
             'concept': concept,
             'start_date': 0.0,
@@ -97,6 +118,14 @@ class HrPayrollSettlement(models.Model):
     # Genera Las Lineas De La Liquidacion
     # ========================
     def action_generate_settlement_lines(self):
+        """
+        Genera las líneas de liquidación a partir de los conceptos definidos.
+        
+        Este método construye las líneas de liquidación (prima, cesantías,
+        intereses de cesantías y vacaciones) y las asigna al registro,
+        reemplazando cualquier línea existente.
+        """
+        
 
         # === Se Crea El Diccionario Vacio Y Se Crean Los Conceptos Para Generar Las Lineas ===
         lines = []
@@ -117,6 +146,28 @@ class HrPayrollSettlement(models.Model):
     # Devuelve La Informacion De Las Lineas
     # ========================
     def _get_line_vals(self, concept):
+        """
+        Calcula y retorna los valores de una línea de liquidación para un concepto específico.
+    
+        Este método obtiene los eventos del empleado dentro del periodo aplicable,
+        calcula días, ausencias, auxilio de transporte, comisiones y valores base,
+        y finalmente determina el valor liquidado del concepto solicitado
+        (prima, cesantías, intereses de cesantías o vacaciones).
+    
+        Args:
+            concept (str): Concepto de liquidación a calcular.
+                Valores esperados: 'prima', 'cesantias',
+                'intereses_cesantias', 'vacaciones'.
+    
+        Returns:
+            dict: Diccionario con los valores necesarios para crear la línea
+            de liquidación del concepto, incluyendo fechas, días liquidados,
+            salario promedio y valor neto.
+    
+        Raises:
+            UserError: Si los parámetros de nómina requeridos no están configurados
+            correctamente o si no es posible calcular el concepto.
+        """
         
         # ========================
         # Trae Los eventos 

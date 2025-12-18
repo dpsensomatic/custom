@@ -6,7 +6,7 @@ from collections import defaultdict
 from io import BytesIO
 from zipfile import ZipFile
 import base64
-from reportlab.lib.pagesizes import A4
+from reportlab.lib.pagesizes import A4  
 from reportlab.pdfgen import canvas
 from reportlab.lib import colors
 from reportlab.lib.units import mm
@@ -27,7 +27,7 @@ class HrPayroll(models.Model):
     _name = "hr.payroll"
     _description = "Nómina"
 
-    # === Campos del Modelo ===
+    # === Campos basicos del Modelo ===
     name = fields.Char(string="Nombre", required=True, default="Nómina")
     date_start = fields.Date(string="Fecha inicio", required=True)
     date_end = fields.Date(string="Fecha fin", required=True)
@@ -91,14 +91,42 @@ class HrPayroll(models.Model):
     )    
 
 # ========================
+    # ========================
+    # Computa Los Totales De Debito Y Credito
+    # ========================
+    @api.depends('account_line_ids.debit', 'account_line_ids.credit')
+    def _compute_totals(self):
+        for rec in self:
+            rec.total_debit = sum(rec.account_line_ids.mapped('debit'))
+            rec.total_credit = sum(rec.account_line_ids.mapped('credit'))
+    # ========================
     
     
     # ========================
     # Helpers pequeños
     # ========================
     def _empty_totals(self, employee, contract):
-        """Diccionario base con todas las claves que usamos.
-        Si agregas nuevos componentes, añádelos aquí."""
+        """
+        Construye el diccionario base con todos los totales usados en los cálculos de nómina.
+
+        Este método inicializa todas las claves necesarias para el cálculo salarial,
+        deducciones, aportes a seguridad social, parafiscales y provisiones.
+        Todas las claves deben existir desde el inicio para evitar errores en los
+        cálculos posteriores.
+
+        Args:
+            employee (hr.employee): Empleado al que pertenecen los cálculos de nómina.
+            contract (hr.contract): Contrato activo del empleado usado como base salarial.
+
+        Returns:
+            dict: Diccionario con la estructura completa de totales de nómina.
+            Incluye valores base del contrato y montos inicializados en 0.0.
+
+        Notes:
+            - Este diccionario es la base de todos los cálculos posteriores.
+            - Si se agregan nuevos conceptos de nómina, deben añadirse aquí.
+            - No eliminar claves aunque temporalmente no se utilicen.
+        """
         return { 
                 # === Datos Del Empleado Y Contrato ===
                 'employee_id': employee.name,
@@ -157,6 +185,20 @@ class HrPayroll(models.Model):
     
     
     def _empty_total_accounts(self):
+        """
+        Construye el diccionario base con todas las claves para la creacion de las cuentas contables.
+
+        Args:
+            Na
+            
+        Returns:
+            dict: Diccionario con la estructura completa para las diferentes cuentas contables.
+            Incluye montos inicializados en 0.0.
+
+        Notes:
+            - Si se agregan nuevas cuentas, deben añadirse aquí.
+            - No eliminar claves aunque temporalmente no se utilicen.
+        """
         return { 
                 # === Totales acumulados ===
                 'wages_debit' : 0.0,
@@ -191,6 +233,29 @@ class HrPayroll(models.Model):
     # Acción principal (Genera Las Lineas De La Nomina)
     # ========================
     def action_generate_lines(self):
+        """
+        Genera y crea las líneas de nómina para el período seleccionado.
+
+        Este método recorre todos los empleados con contrato activo dentro del
+        rango de fechas definido, calcula salarios, deducciones, aportes,
+        parafiscales y prestaciones sociales, y genera las líneas de nómina
+        asociadas al registro actual.
+
+        Requiere que el registro tenga definidas las fechas de inicio y fin
+        del período de nómina.
+
+        Raises:
+            UserError: Si no se han definido date_start o date_end.
+
+        Side Effects:
+            - Elimina todas las líneas de nómina existentes (line_ids).
+            - Crea nuevas líneas de nómina con los valores calculados.
+            - Calcula y asigna totales de salario, deducciones y aportes
+              tanto para el empleado como para la empresa.
+
+        Returns:
+            None
+        """
         self.ensure_one()
 
         # ========================
@@ -235,7 +300,6 @@ class HrPayroll(models.Model):
             # === Calculo De Los Dias Trabajados ===
             totals = self.env['hr.payroll.mixin']._compute_days_worked(events, totals,  dates['o1'], dates['o2'], dates)
             
-            ipdb.set_trace()
             # === Calculo De Los Eventos Sin Incapacidad
             incapacity_types = ['sick_leave', 'paid_leave','suspension', 'unpaid_leave','parental_leave', 'arl_leave']
             events_worked =  events.filtered(lambda e: e.type not in incapacity_types)
@@ -248,7 +312,6 @@ class HrPayroll(models.Model):
                         except Exception:
                             pass
 
-            ipdb.set_trace()
             # === Calculo del Salario segun incapacidades ===
             totals['wage_per_day'] =contract.wage / 30
             totals['wage_earned'] = totals['wage_per_day'] * totals['days_worked']
@@ -376,7 +439,28 @@ class HrPayroll(models.Model):
     # Genera Los Apuntes Contables
     # ========================    
     def action_generate_accounting_entries(self):
-        """Crea o actualiza líneas contables totales de la nómina."""
+        """
+        Genera y crea los apuntes contables de la nómina a partir de las líneas calculadas.
+
+        Este método toma los valores previamente generados por `action_generate_lines`
+        y construye los apuntes contables correspondientes a salarios, deducciones,
+        aportes a seguridad social y parafiscales, según la configuración contable
+        definida en la nómina.
+
+        Requiere que las cuentas contables estén correctamente configuradas en los
+        parámetros de nómina antes de su ejecución.
+
+        Side Effects:
+            - Elimina todas las líneas contables existentes (`account_line_ids`).
+            - Calcula los totales contables a partir de las líneas de nómina.
+            - Genera las líneas contables base y las líneas de aportes.
+            - Aplica el método de redondeo contable si es necesario.
+            - Guarda las líneas contables precomputadas en `precomputed_lines_json`.
+            - Crea registros en el modelo `hr.payroll.account.line`.
+
+        Returns:
+            None
+        """
         for payroll in self:
             payroll.account_line_ids.unlink()
 
@@ -385,7 +469,7 @@ class HrPayroll(models.Model):
             totals_account = self._compute_total_accounts()
 
             
-            # === Creación de líneas contables ===
+
             # === Creación de líneas contables ===
             line_vals = []
 
@@ -409,6 +493,18 @@ class HrPayroll(models.Model):
     # Trae El Empleado Seleccionado Y Consulta Sus Cuentas Contables
     # ========================
     def action_filter_by_employee(self):
+        """
+        Genera las líneas contables de la nómina filtradas por un empleado específico.
+
+        Elimina las líneas contables existentes y reconstruye el asiento únicamente
+        con la información del empleado seleccionado, incluyendo salarios, aportes,
+        beneficios, parafiscales y ajuste por redondeo si aplica.
+
+        Raises:
+            UserError:
+                - Si no se selecciona un empleado.
+                - Si el empleado no tiene líneas de nómina en el período.
+        """
         self.ensure_one()
         if not self.employee_selector_id:
             raise UserError("Por favor selecciona un empleado antes de consultar.")
@@ -692,25 +788,14 @@ class HrPayroll(models.Model):
           
         self.env['hr.payroll.account.line'].create(line_vals)
     # ========================
-    
-    
-    # ========================
-    # Computa Los Totales De Debito Y Credito
-    # ========================
-    @api.depends('account_line_ids.debit', 'account_line_ids.credit')
-    def _compute_totals(self):
-        for rec in self:
-            rec.total_debit = sum(rec.account_line_ids.mapped('debit'))
-            rec.total_credit = sum(rec.account_line_ids.mapped('credit'))
-    # ========================
-    
+        
     
     # ========================
     # Extrae Los Valores De La Nomina Generada Y Genera Los Totales
     # ========================
     def _compute_total_accounts(self):
         """Calcula los totales de todas las cuentas con base en las líneas de nómina."""
-        self.ensure_one()  # buena práctica: solo debe aplicarse a un registro
+        self.ensure_one()
 
         totals = self._empty_total_accounts()
         currency = self.currency_id
@@ -750,6 +835,10 @@ class HrPayroll(models.Model):
     # Extrae Valores De Los Aportes Y Genera Los Totales
     # ========================
     def _configure_contribution_lines(self, payroll):
+        """
+        Consolida los aportes de nómina y genera las líneas contables de crédito
+        agrupadas por cuenta contable (salud, pensión, ARL y caja de compensación).
+        """
         line_vals = []
         currency = self.currency_id
 
@@ -808,6 +897,7 @@ class HrPayroll(models.Model):
     # Ajusta Las Lineas Con Los Totales Dados
     # ========================
     def _configure_accounting_lines(self,totals,payroll):
+        """Configura las líneas contables de la nómina según los totales y cuentas predeterminadas."""
         line_vals = []
         accounts_model = self.env['hr.predetermined.accounts']
         acc_config = accounts_model.search([('company_id', '=', self.env.company.id)], limit=1)
@@ -1016,7 +1106,26 @@ class HrPayroll(models.Model):
     # Redondea Los Decimales 
     # ========================
     def _rounding_method(self, lines_vals, payroll):
-        """Ajuste por redondeo si los débitos y créditos no cuadran."""
+        """
+        Ajusta diferencias por redondeo entre débitos y créditos del asiento de nómina.
+
+        Si la diferencia total entre débitos y créditos es menor o igual al umbral
+        permitido, se agrega una línea adicional para cuadrar el asiento contable.
+
+        Args:
+            lines_vals (list[dict]):
+                Lista de líneas contables generadas para la nómina.
+                Cada diccionario debe contener las claves:
+                'debit', 'credit', 'account_id' y 'payroll_id'.
+
+            payroll (hr.payroll):
+                Registro de nómina sobre el cual se está generando el asiento contable.
+
+        Returns:
+            list[dict]:
+                Lista de líneas contables, incluyendo la línea de ajuste por redondeo
+                si fue necesario.
+        """
         acc_config = self.env['hr.predetermined.accounts'].search([
             ('company_id', '=', self.env.company.id)
         ], limit=1)
@@ -1046,6 +1155,19 @@ class HrPayroll(models.Model):
     # Confirma Los Asientos Contables Y Los Guarda En account.move
     # ========================
     def action_confirm(self):
+        """
+        Crea o actualiza el asiento contable de la nómina y lo confirma en contabilidad.
+
+        Toma las líneas contables previamente calculadas y almacenadas en
+        `precomputed_lines_json`, las limpia según los campos válidos de
+        `account.move.line`, genera el asiento en el diario de Nómina y lo publica.
+        Si la nómina ya tiene un asiento, lo reemplaza.
+
+        Raises:
+            UserError:
+                - Si la nómina no tiene líneas contables precomputadas.
+                - Si no existe un diario contable de tipo "Varios" con nombre "Nomina".
+        """
         for payroll in self:
             
             if not payroll.precomputed_lines_json:
@@ -1098,6 +1220,7 @@ class HrPayroll(models.Model):
     # Actualiza Los Asientos Contables A Estado Draft  
     # ========================
     def action_reset_to_draft(self):
+        """Devuelve el estado de la nomina a draft"""
         for payroll in self:
             if payroll.move_id and payroll.move_id.state == 'posted':
                 payroll.move_id.button_draft()

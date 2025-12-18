@@ -67,8 +67,29 @@ class HrServiceBonus(models.Model):
     #  Vacia Los Totales Que Hayan En Los Diccionarios
     # ========================
     def _empty_totals(self):
-        """Diccionario base con todas las claves que usamos.
-        Si agregas nuevos componentes, añádelos aquí."""
+        """
+        Construye el diccionario base con todos los totales usados en los cálculos
+        de la prima de servicios.
+
+        Este método inicializa todas las claves necesarias para el cálculo de la
+        prima. Todas las claves se crean desde el inicio para evitar errores
+        en los cálculos posteriores.
+
+        Args:
+            concepts (list[str]):
+                Lista de conceptos de prima de conceptos a inicializar.
+                Ejemplo: ['prima'].
+
+        Returns:
+            dict:
+                Diccionario con la estructura completa de totales de la prima,
+                donde cada concepto se inicializa con valores numéricos en 0.0.
+
+        Notes:
+            - Este diccionario es la base de todos los cálculos posteriores.
+            - Si se agregan nuevos conceptos de nómina, deben añadirse aquí.
+            - No eliminar claves aunque temporalmente no se utilicen.
+        """
         return {                 
             'concept': 0.0,
             'start_date': 0.0,
@@ -97,6 +118,10 @@ class HrServiceBonus(models.Model):
     # Genera Las Lineas De La Liquidacion
     # ========================
     def action_generate_service_bonus(self):
+        """
+        Genera la línea de la prima de servicios y la asigna al registro,
+        reemplazando cualquier línea existente.
+        """
 
         # === Se Crea El Diccionario Vacio Y Se Crean Los Conceptos Para Generar Las Lineas ===
         lines = []
@@ -117,7 +142,25 @@ class HrServiceBonus(models.Model):
     # Devuelve La Informacion De Las Lineas
     # ========================
     def _get_line_vals(self, concept):
-        
+        """
+        Calcula y retorna los valores del concepto de prima de servicios.
+    
+        Este método obtiene los eventos del empleado dentro del periodo aplicable,
+        calcula días, ausencias, auxilio de transporte, comisiones y valores base,
+        y finalmente determina el valor da la prima .
+    
+        Args:
+            concept (str): Concepto de prima a calcular
+                Valores esperados: 'prima'
+        Returns:
+            dict: Diccionario con los valores necesarios para crear la línea
+            de prima de servicios, incluyendo fechas, días en los que afecta la prima ,
+            salario promedio y valor neto.
+    
+        Raises:
+            UserError: Si los parámetros de nómina requeridos no están configurados
+            correctamente o si no es posible calcular el concepto.
+        """        
         # ========================
         # Trae Los eventos 
         # ========================
